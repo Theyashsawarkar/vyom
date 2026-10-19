@@ -90,6 +90,7 @@ disabled = ["raga"]          # installed tools not to load
 cycle = ["dvara", "ganit"]   # Tab order
 width = 900                  # every panel opens at this size (times scale = 1.25)
 height = 520
+opacity = 0.72               # panel background: 1 solid, lower = more glass
 
 [plugin.tarang]              # each tool's settings: see its README
 hotspot_command = "vayu-hotspot"

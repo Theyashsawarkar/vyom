@@ -6,6 +6,7 @@
   width = 900                    # every panel's size: all tools open at the same size
   height = 520
   scale = 1.25                   # times this (capped at 90% of the screen)
+  opacity = 0.72                 # panel background: 1 solid, lower shows more of the blur
 
   [plugin.<name>]                # each plugin's own settings (its README)
 """

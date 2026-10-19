@@ -134,17 +134,24 @@ class Vyom(Gtk.Application):
         Gtk.Application.do_startup(self)
         self.hold()  # stay resident: the next key press is instant
         self.css = Gtk.CssProvider()
-        self.load_css()
         self.conf = config.load()
+        self.load_css()
         self.load_plugins()
 
     def load_css(self):
         paths = [os.path.join(HERE, "style.css")]
         paths += [os.path.join(d, "style.css") for d in plugin_dirs() if os.path.exists(os.path.join(d, "style.css"))]
+        css = [open(p).read() for p in paths]
+        # [vyom] opacity: how much of the (blurred) desktop shows through.
+        try:
+            opacity = min(1.0, max(0.3, float(self.conf.get("vyom", {}).get("opacity", 0.72))))
+        except (TypeError, ValueError):
+            opacity = 0.72
+        css.append(f".vyom-panel {{ background-color: alpha(#1e1e2e, {opacity:.2f}); }}")
         user = os.path.join(os.path.dirname(config.PATH), "style.css")
         if os.path.exists(user):
-            paths.append(user)
-        self.css.load_from_string("\n".join(open(p).read() for p in paths))
+            css.append(open(user).read())
+        self.css.load_from_string("\n".join(css))
         Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), self.css,
                                                   Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 

@@ -145,8 +145,6 @@ class Panel(Gtk.ApplicationWindow):
 
         if plugin.layout == "card":
             self.card_holder = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-            if not self.anchored:  # same size as every other panel, card centered in it
-                self.card_holder.set_size_request(-1, h)
             root.append(self.card_holder)
         else:
             root.append(self.build_top())
@@ -178,12 +176,13 @@ class Panel(Gtk.ApplicationWindow):
     def sizes(self):
         """(width, height, preview width) times [vyom] scale (default 1.25),
         never more than 90% of the screen. Every centered panel is the same
-        size ([vyom] width x height, default 900 x 520), so switching tools
-        never jumps; only an anchored panel (kendra under the bar) keeps the
-        tool's own size."""
+        size ([vyom] width x height, default 900 x 520), so switching between
+        search tools never jumps. A card (power menu, battery, quick
+        settings) is a different kind of panel: the tool's own width, as
+        tall as its content."""
         conf = self.app.conf.get("vyom", {})
         scale = float(conf.get("scale", 1.25))
-        if self.anchored:
+        if self.anchored or self.plugin.layout == "card":
             w, h = self.plugin.width, self.plugin.height
         else:
             w, h = float(conf.get("width", 900)), float(conf.get("height", 520))
@@ -261,8 +260,6 @@ class Panel(Gtk.ApplicationWindow):
                 self.card_holder.remove(old)
             card = self.plugin.build_card()
             if card is not None:
-                if not self.anchored:
-                    card.set_vexpand(True)  # fills the panel; ui.spacer() pushes a footer down
                 self.card_holder.append(card)
             self.present()
             return

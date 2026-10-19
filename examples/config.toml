@@ -11,6 +11,9 @@
 # width = 900
 # height = 520
 # scale = 1.25
+# Panel background opacity: 1 is solid, lower lets more of the blurred
+# desktop show through (0.3 to 1):
+# opacity = 0.72
 
 # Each tool's own settings live under [plugin.<name>]; its README lists
 # them. A few examples:

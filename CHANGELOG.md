@@ -2,6 +2,13 @@
 
 Newest first. Releases are tags (`vX.Y.Z`).
 
+## v0.2.6 -- 2026-10-19
+
+- Cards (power menu, battery, quick settings) keep the tool's own width
+  and are as tall as their content; the shared size is for search tools.
+- `[vyom] opacity` (default 0.72, was a fixed 0.82): how much of the
+  blurred desktop shows through every panel.
+
 ## v0.2.5 -- 2026-10-19
 
 - Every panel opens at the same size: `[vyom] width` x `height` (default
