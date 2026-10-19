@@ -1,0 +1,49 @@
+# ~/.config/vyom/config.toml -- every key is optional.
+# Reload after editing: vyom reload
+
+[quick]
+# Which tiles, in order (two per row). A tile whose tool or hardware is
+# missing (no Bluetooth controller, no power-profiles-daemon...) is skipped.
+# Built in: wifi, bluetooth, hotspot, dnd, theme, power-profile.
+# Command-only (need the commands below): caffeine, wallpaper, or any name.
+tiles = ["wifi", "bluetooth", "hotspot", "dnd", "caffeine", "theme", "wallpaper", "power-profile"]
+
+# Header buttons (hidden when unset or the command isn't installed).
+lock = "loginctl lock-session"
+# power = "wlogout"
+
+# Where the panel sits under the bar's top-right corner (px).
+margin_top = 6
+margin_right = 8
+
+# Every tile can open something more detailed on right click / Shift+Enter.
+[quick.tile.wifi]
+# open = "nm-connection-editor"
+
+[quick.tile.bluetooth]
+# open = "blueman-manager"
+
+# The hotspot tile talks to a command with `status --json`, `on` and `off`
+# (Vayu's vayu-hotspot). Without it, the tile isn't shown.
+[quick.tile.hotspot]
+# command = "vayu-hotspot"
+
+# Any tile can be driven by your own commands instead of the built-in:
+#   status   prints the state; the tile is "on" when it matches on_when
+#   on_when  a regular expression (default: on|yes|true|active|enabled|1)
+#   toggle   one command for both directions, or `on` / `off` separately
+#   subtitle_on / subtitle_off   the text under the title
+#   title / icon / color         to override how it looks
+#   (colors: sky blue teal red peach mauve yellow green)
+#
+# [quick.tile.caffeine]
+# status = "systemctl --user is-active swayidle.service"
+# on_when = "^inactive$"
+# on = "systemctl --user stop swayidle.service"
+# off = "systemctl --user start swayidle.service"
+# subtitle_on = "screen stays on"
+#
+# A tile with only `run` is an action button:
+# [quick.tile.wallpaper]
+# run = "~/bin/new-wallpaper"
+# subtitle = "fetch a new one"

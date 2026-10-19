@@ -1,0 +1,68 @@
+#!/usr/bin/env python3
+"""vyom: Vayu's launcher and system panels (replacing wofi).
+
+  vyom quick          open / close quick settings
+  vyom daemon         start Vyom in the background (sway runs this at login)
+  vyom reload         re-read ~/.config/vyom/config.toml
+  vyom quit           stop it
+  vyom --version | --help
+
+Vyom keeps one resident process. When it's running, this script only sends
+it a D-Bus message (no GTK start-up), so the panel opens at once.
+"""
+import glob
+import os
+import subprocess
+import sys
+
+APP_ID, OBJ = "dev.vayu.Vyom", "/dev/vayu/Vyom"
+ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+COMMANDS = ("quick", "daemon", "reload", "quit")
+
+
+def running():
+    r = subprocess.run(["busctl", "--user", "call", "org.freedesktop.DBus", "/org/freedesktop/DBus",
+                        "org.freedesktop.DBus", "NameHasOwner", "s", APP_ID],
+                       capture_output=True, text=True)
+    return r.stdout.strip() == "b true"
+
+
+def main():
+    args = sys.argv[1:]
+    cmd = args[0] if args else "--help"
+    if cmd in ("-h", "--help"):
+        print(__doc__.strip())
+        return 0
+    if cmd not in COMMANDS and cmd not in ("-V", "--version"):
+        print(f"vyom: unknown command {cmd} (see vyom --help)", file=sys.stderr)
+        return 2
+    if cmd in ("-V", "--version"):
+        sys.path.insert(0, ROOT)
+        from vyom import VERSION
+        print(f"vyom {VERSION}")
+        return 0
+    if cmd in ("quick", "reload", "quit") and running():
+        return subprocess.run(["gdbus", "call", "--session", "--dest", APP_ID, "--object-path", OBJ,
+                               "--method", "org.gtk.Actions.Activate", cmd, "[]", "{}"],
+                              stdout=subprocess.DEVNULL).returncode
+    if cmd == "quit":
+        return 0
+    if cmd == "daemon" and running():
+        return 0
+    # gtk4-layer-shell must be loaded before GTK itself (its Python docs say
+    # so): re-run with it preloaded.
+    lib = next(iter(sorted(glob.glob("/usr/lib*/libgtk4-layer-shell.so*") +
+                           glob.glob("/usr/lib/*/libgtk4-layer-shell.so*"))), None)
+    if lib is None:
+        print("vyom: needs gtk4-layer-shell (pacman -S gtk4-layer-shell)", file=sys.stderr)
+        return 1
+    if lib not in os.environ.get("LD_PRELOAD", ""):
+        os.environ["LD_PRELOAD"] = ":".join(p for p in (lib, os.environ.get("LD_PRELOAD")) if p)
+        os.execv(sys.executable, [sys.executable, os.path.realpath(__file__), *args])
+    sys.path.insert(0, ROOT)
+    from vyom.app import main as app_main
+    return app_main([sys.argv[0], *args])
+
+
+if __name__ == "__main__":
+    sys.exit(main())
