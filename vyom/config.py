@@ -1,10 +1,15 @@
-"""~/.config/vyom/config.toml (all optional; examples/config.toml has every key)."""
+"""~/.config/vyom/config.toml (all optional; examples/config.toml has every key).
+
+  [vyom]
+  disabled = ["raga"]            # plugins not to load
+  cycle = ["dvara", "ganit"]     # Tab order between tools
+
+  [plugin.<name>]                # each plugin's own settings (its README)
+"""
 import os
 import tomllib
 
 PATH = os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"), "vyom", "config.toml")
-
-DEFAULT_TILES = ["wifi", "bluetooth", "hotspot", "dnd", "caffeine", "theme", "wallpaper", "power-profile"]
 
 
 def load():
@@ -16,8 +21,6 @@ def load():
     except tomllib.TOMLDecodeError as e:
         print(f"vyom: {PATH}: {e}; using defaults", flush=True)
         conf = {}
-    quick = conf.setdefault("quick", {})
-    quick.setdefault("tiles", DEFAULT_TILES)
-    quick.setdefault("tile", {})
-    quick.setdefault("lock", "loginctl lock-session")
+    conf.setdefault("vyom", {})
+    conf.setdefault("plugin", {})
     return conf

@@ -2,6 +2,40 @@
 
 Newest first. Releases are tags (`vX.Y.Z`).
 
+## v0.2.0 -- 2026-10-19
+
+Vyom is now the runtime for a family of tools, each in its own
+repository (dvara, ganit, smriti, bhava, tarang, setu, doot, patra,
+suchana, raga, mudra, urja, vishram, kendra): together they replace wofi
+(and nwg-bar) in Vayu.
+
+- A plugin API (vyom/plugin.py): a tool is a directory with plugin.toml and
+  a package exporting `Plugin`, found in ~/.local/share/vyom/plugins/ and
+  $VYOM_PLUGIN_PATH. A tool whose `requires` are missing, or whose
+  `available()` says no, is skipped with the reason (`vyom list`); one that
+  fails to load doesn't stop the rest.
+- One shared panel (vyom/panel.py): a centered (or anchored) layer-shell
+  window with a mode pill, the query, rows with icon tiles (Nerd Font
+  glyphs, theme icons or images), sections, badges, a grid layout, an
+  optional fixed-width preview pane, a card layout, and key hints in the
+  footer. Searches run in a worker thread with stale results dropped;
+  `live` refreshes while open.
+- Keys everywhere: Up/Down or Ctrl+K/J, Page Up/Down, Enter (with Shift /
+  Ctrl variants per tool), Tab to the next tool, Esc (the tool sees it
+  first, e.g. to cancel a password prompt).
+- `vyom dmenu`: any script's picker as a Vyom panel (stdin lines, the pick
+  on stdout, exit 1 on Esc; Shift+Enter returns what you typed). Killed
+  while waiting, it closes its panel.
+- `vyom <tool> [args]` starts the daemon if needed (logs to
+  ~/.local/state/vyom/daemon.log); the same call again closes the panel.
+  Every panel is built when the daemon starts, so even the first open is
+  instant.
+- vyom.ui (building blocks for previews and cards) and vyom.util (run,
+  spawn, copy, type, notify, state files, fuzzy matching with a strict
+  substring mode for big lists).
+- Quick settings moved out into its own tool, kendra. Install layout:
+  Vyom in ~/.local/share/vyom/core, tools in ~/.local/share/vyom/plugins.
+
 ## v0.1.1 -- 2026-10-19
 
 - `vyom daemon` builds the panels right away, so the first `vyom quick`

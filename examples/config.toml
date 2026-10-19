@@ -1,49 +1,24 @@
-# ~/.config/vyom/config.toml -- every key is optional.
-# Reload after editing: vyom reload
+# ~/.config/vyom/config.toml -- every key is optional. Reload: vyom reload
 
-[quick]
-# Which tiles, in order (two per row). A tile whose tool or hardware is
-# missing (no Bluetooth controller, no power-profiles-daemon...) is skipped.
-# Built in: wifi, bluetooth, hotspot, dnd, theme, power-profile.
-# Command-only (need the commands below): caffeine, wallpaper, or any name.
-tiles = ["wifi", "bluetooth", "hotspot", "dnd", "caffeine", "theme", "wallpaper", "power-profile"]
+[vyom]
+# Installed tools not to load:
+# disabled = ["raga"]
+# Tab order between tools (default: every list/grid tool, as found):
+# cycle = ["dvara", "ganit", "smriti", "bhava"]
 
-# Header buttons (hidden when unset or the command isn't installed).
-lock = "loginctl lock-session"
-# power = "wlogout"
+# Each tool's own settings live under [plugin.<name>]; its README lists
+# them. A few examples:
 
-# Where the panel sits under the bar's top-right corner (px).
-margin_top = 6
-margin_right = 8
+[plugin.dvara]
+# terminal = "kitty"
 
-# Every tile can open something more detailed on right click / Shift+Enter.
-[quick.tile.wifi]
-# open = "nm-connection-editor"
+[plugin.tarang]
+# hotspot_command = "vayu-hotspot"
 
-[quick.tile.bluetooth]
-# open = "blueman-manager"
+[plugin.urja]
+# limit_file = "~/.local/state/battery-limit/threshold"
 
-# The hotspot tile talks to a command with `status --json`, `on` and `off`
-# (Vayu's vayu-hotspot). Without it, the tile isn't shown.
-[quick.tile.hotspot]
-# command = "vayu-hotspot"
-
-# Any tile can be driven by your own commands instead of the built-in:
-#   status   prints the state; the tile is "on" when it matches on_when
-#   on_when  a regular expression (default: on|yes|true|active|enabled|1)
-#   toggle   one command for both directions, or `on` / `off` separately
-#   subtitle_on / subtitle_off   the text under the title
-#   title / icon / color         to override how it looks
-#   (colors: sky blue teal red peach mauve yellow green)
-#
-# [quick.tile.caffeine]
-# status = "systemctl --user is-active swayidle.service"
-# on_when = "^inactive$"
-# on = "systemctl --user stop swayidle.service"
-# off = "systemctl --user start swayidle.service"
-# subtitle_on = "screen stays on"
-#
-# A tile with only `run` is an action button:
-# [quick.tile.wallpaper]
-# run = "~/bin/new-wallpaper"
-# subtitle = "fetch a new one"
+[plugin.kendra]
+# tiles = ["wifi", "bluetooth", "hotspot", "dnd", "caffeine", "theme", "wallpaper", "power-profile"]
+# lock = "swaylock"
+# power = "vyom vishram"
