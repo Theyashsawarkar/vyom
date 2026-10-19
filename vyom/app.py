@@ -56,8 +56,6 @@ class DmenuPlugin(Plugin):
     """`vyom dmenu`: a list of the caller's lines; Enter prints the pick."""
     name, title, icon, color = "dmenu", "Choose", "\U000f0279", "mauve"
     hints = [Hint("Enter", "choose"), Hint("Shift+Enter", "use what you typed")]
-    width = 640
-    height = 340              # a dialog: a few choices, not a launcher
 
     def __init__(self, vyom, conf):
         super().__init__(vyom, conf)

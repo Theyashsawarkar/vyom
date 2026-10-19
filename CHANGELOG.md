@@ -2,6 +2,13 @@
 
 Newest first. Releases are tags (`vX.Y.Z`).
 
+## v0.2.5 -- 2026-10-19
+
+- Every panel opens at the same size: `[vyom] width` x `height` (default
+  900 x 520, times `scale`), so switching tools never jumps. A tool's own
+  `width`/`height` now only apply to an anchored panel (kendra). Card
+  tools fill the panel; `ui.spacer()` pushes a footer to the bottom.
+
 ## v0.2.4 -- 2026-10-19
 
 - Footer key hints show the keys as key caps with their names (Ctrl+Enter,

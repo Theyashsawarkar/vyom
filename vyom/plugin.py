@@ -59,8 +59,8 @@ class Plugin:
 
     layout = "list"             # list | grid | card
     placeholder = "Search…"
-    width = 720
-    height = 480
+    width = 720                 # only for an anchored panel (see anchor); every centered
+    height = 480                # panel is [vyom] width x height, so they all match
     preview = False             # a preview pane on the right
     preview_width = 300
     grid_columns = 8            # grid layout

@@ -88,6 +88,8 @@ Every panel: type to search, `Up`/`Down` (or `Ctrl+K`/`Ctrl+J`) move,
 [vyom]
 disabled = ["raga"]          # installed tools not to load
 cycle = ["dvara", "ganit"]   # Tab order
+width = 900                  # every panel opens at this size (times scale = 1.25)
+height = 520
 
 [plugin.tarang]              # each tool's settings: see its README
 hotspot_command = "vayu-hotspot"
@@ -117,7 +119,7 @@ from vyom import Hint, Plugin as Base, Row, Section, ui, util
 
 class Plugin(Base):
     preview = True                       # a preview pane on the right
-    hints = [Hint("↵", "greet")]
+    hints = [Hint("Enter", "greet")]
 
     def search(self, query):             # runs in a worker thread
         return [Section("People"), Row("World", "the usual", icon="󰞅", data="world")]
