@@ -3,6 +3,7 @@
   [vyom]
   disabled = ["raga"]            # plugins not to load
   cycle = ["dvara", "ganit"]     # Tab order between tools
+  scale = 1.25                   # every panel's size (capped at 90% of the screen)
 
   [plugin.<name>]                # each plugin's own settings (its README)
 """

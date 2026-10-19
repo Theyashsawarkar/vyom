@@ -127,7 +127,8 @@ class Panel(Gtk.ApplicationWindow):
         root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         root.add_css_class("vyom-panel")
         root.add_css_class(f"plugin-{plugin.name}")
-        root.set_size_request(plugin.width, -1)
+        w, h, pw = self.sizes()
+        root.set_size_request(w, -1)
         self.root = root
 
         if plugin.layout == "card":
@@ -136,14 +137,14 @@ class Panel(Gtk.ApplicationWindow):
         else:
             root.append(self.build_top())
             body = Gtk.Box(vexpand=True)
-            body.set_size_request(-1, max(200, plugin.height - 110))  # minus the bar and footer
+            body.set_size_request(-1, max(200, h - 110))  # minus the bar and footer
             body.append(self.build_results())
             if plugin.preview:
                 # A fixed-width column: wrapped text in it must not grow it.
                 pscroll = Gtk.ScrolledWindow(hexpand=False)
                 pscroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
                 pscroll.set_propagate_natural_width(False)
-                pscroll.set_size_request(plugin.preview_width, -1)
+                pscroll.set_size_request(pw, -1)
                 pscroll.add_css_class("preview")
                 self.preview_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
                 self.preview_box.add_css_class("preview-inner")
@@ -160,6 +161,19 @@ class Panel(Gtk.ApplicationWindow):
         self.connect("close-request", lambda *_: (self.hide_panel(), True)[1])
 
     # ------------------------------------------------------------ building
+    def sizes(self):
+        """(width, height, preview width): the tool's own size times
+        [vyom] scale (default 1.25), never more than 90% of the screen."""
+        scale = float(self.app.conf.get("vyom", {}).get("scale", 1.25))
+        w, h = self.plugin.width * scale, self.plugin.height * scale
+        try:
+            mon = Gdk.Display.get_default().get_monitors().get_item(0).get_geometry()
+            w, h = min(w, mon.width * 0.9), min(h, mon.height * 0.9)
+        except (AttributeError, TypeError):
+            pass
+        pw = min(self.plugin.preview_width * scale, w * 0.45)
+        return int(w), int(h), int(pw)
+
     def build_top(self):
         bar = Gtk.Box(spacing=10)
         bar.add_css_class("topbar")

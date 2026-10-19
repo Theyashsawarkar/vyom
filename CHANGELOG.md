@@ -2,6 +2,12 @@
 
 Newest first. Releases are tags (`vX.Y.Z`).
 
+## v0.2.2 -- 2026-10-19
+
+- Bigger panels: every tool's size times `[vyom] scale` (default 1.25), never
+  more than 90% of the screen, so it adapts to smaller displays. The
+  preview column scales with it.
+
 ## v0.2.1 -- 2026-10-19
 
 - `vyom dmenu` panels are dialog-sized (640x340) instead of launcher-sized:

@@ -5,6 +5,9 @@
 # disabled = ["raga"]
 # Tab order between tools (default: every list/grid tool, as found):
 # cycle = ["dvara", "ganit", "smriti", "bhava"]
+# Every panel's size, relative to what each tool asks for (capped at 90%
+# of the screen):
+# scale = 1.25
 
 # Each tool's own settings live under [plugin.<name>]; its README lists
 # them. A few examples:
