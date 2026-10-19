@@ -2,6 +2,13 @@
 
 Newest first. Releases are tags (`vX.Y.Z`).
 
+## v0.2.3 -- 2026-10-19
+
+- Fixed: moving down a long list stopped scrolling once the selection left
+  the visible part. Rows were measured against the scrolled window's
+  Viewport (only the visible area), so a row below it looked visible.
+  They're measured against the list itself now.
+
 ## v0.2.2 -- 2026-10-19
 
 - Bigger panels: every tool's size times `[vyom] scale` (default 1.25), never

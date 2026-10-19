@@ -356,7 +356,12 @@ class Panel(Gtk.ApplicationWindow):
 
     def scroll_to(self, w):
         adj = self.scroll.get_vadjustment()
-        res = w.translate_coordinates(self.scroll.get_child(), 0, 0)
+        # Relative to the list itself (its full height), not the scroll's
+        # direct child: GTK wraps the list in a Viewport, which is only the
+        # visible part, so rows past it measured as "visible" and selection
+        # walked off the bottom without scrolling.
+        content = self.grid if self.plugin.layout == "grid" else self.list
+        res = w.translate_coordinates(content, 0, 0)
         if not res or (len(res) == 3 and not res[0]):
             return False
         y = res[-1]  # (x, y), or (ok, x, y) in older PyGObject
