@@ -2,6 +2,11 @@
 
 Newest first. Releases are tags (`vX.Y.Z`).
 
+## v0.2.1 -- 2026-10-19
+
+- `vyom dmenu` panels are dialog-sized (640x340) instead of launcher-sized:
+  they usually hold a handful of choices (Accept / Reject, Update now / Later).
+
 ## v0.2.0 -- 2026-10-19
 
 Vyom is now the runtime for a family of tools, each in its own
