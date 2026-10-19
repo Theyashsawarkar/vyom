@@ -55,7 +55,7 @@ def read_meta(d):
 class DmenuPlugin(Plugin):
     """`vyom dmenu`: a list of the caller's lines; Enter prints the pick."""
     name, title, icon, color = "dmenu", "Choose", "\U000f0279", "mauve"
-    hints = [Hint("↵", "choose"), Hint("⇧↵", "use what you typed")]
+    hints = [Hint("Enter", "choose"), Hint("Shift+Enter", "use what you typed")]
     width = 640
     height = 340              # a dialog: a few choices, not a launcher
 

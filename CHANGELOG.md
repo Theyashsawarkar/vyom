@@ -2,6 +2,12 @@
 
 Newest first. Releases are tags (`vX.Y.Z`).
 
+## v0.2.4 -- 2026-10-19
+
+- Footer key hints show the keys as key caps with their names (Ctrl+Enter,
+  Shift+Enter, Esc) instead of symbols (⌃↵, ⇧↵): `vyom.ui.hint_label()` and
+  `keycap_markup()` for tools that build their own footer.
+
 ## v0.2.3 -- 2026-10-19
 
 - Fixed: moving down a long list stopped scrolling once the selection left

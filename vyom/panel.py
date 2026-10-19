@@ -53,6 +53,17 @@ def icon_widget(icon, size=18):
     return label(icon or "", "glyph")
 
 
+def keycap_markup(keys):
+    """'Ctrl+Enter' as a key cap (Pango), for footers and hints."""
+    return ("<span background='#313244' foreground='#bac2de' font_family='JetBrainsMono Nerd Font'> "
+            + GLib.markup_escape_text(keys) + " </span>")
+
+
+def hint_label(keys, what):
+    """A footer hint: the keys as a key cap, then what they do."""
+    return label(f"{keycap_markup(keys)} {GLib.markup_escape_text(what)}", "hint", markup=True)
+
+
 def tile(icon, color, size=18, cls="tile"):
     box = Gtk.Box(halign=Gtk.Align.CENTER, valign=Gtk.Align.CENTER)
     box.add_css_class(cls)
@@ -223,11 +234,11 @@ class Panel(Gtk.ApplicationWindow):
         foot = Gtk.Box(spacing=16)
         foot.add_css_class("foot")
         for h in self.plugin.hints:
-            foot.append(label(f"{h.keys}  {h.what}", "hint"))
+            foot.append(hint_label(h.keys, h.what))
         self.status = label("", "status", hexpand=True, halign=Gtk.Align.END,
                             ellipsize=Pango.EllipsizeMode.END)
         foot.append(self.status)
-        foot.append(label("Esc  close", "hint"))
+        foot.append(hint_label("Esc", "close"))
         return foot
 
     # ------------------------------------------------------------- showing
