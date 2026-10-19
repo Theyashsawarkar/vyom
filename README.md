@@ -31,13 +31,13 @@ every tool opens instantly and looks the same.
 
 ## Install
 
-Requirements: Python 3.11+, PyGObject, GTK 4, [gtk4-layer-shell](https://github.com/wmww/gtk4-layer-shell),
+Requirements: Python 3.11+, PyGObject (with pycairo, for tools that draw), GTK 4, [gtk4-layer-shell](https://github.com/wmww/gtk4-layer-shell),
 a compositor with the layer-shell protocol (sway, Hyprland, river, Wayfire,
 labwc…), and a [Nerd Font](https://www.nerdfonts.com) for the icons.
 
 ```sh
 # Arch
-sudo pacman -S --needed python-gobject gtk4 gtk4-layer-shell ttf-jetbrains-mono-nerd
+sudo pacman -S --needed python-gobject python-cairo gtk4 gtk4-layer-shell ttf-jetbrains-mono-nerd
 
 git clone https://github.com/Theyashsawarkar/vyom ~/.local/share/vyom/core
 ln -s ~/.local/share/vyom/core/bin/vyom ~/.local/bin/vyom
