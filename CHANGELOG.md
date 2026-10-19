@@ -2,6 +2,14 @@
 
 Newest first. Releases are tags (`vX.Y.Z`).
 
+## v0.1.1 -- 2026-10-19
+
+- `vyom daemon` builds the panels right away, so the first `vyom quick`
+  after login is as fast as the rest (it took ~600 ms while the tile
+  checks ran on first use).
+- The Wi-Fi tile reads NetworkManager's cached scan (`--rescan no`):
+  without it the network name could take seconds to appear.
+
 ## v0.1.0 -- 2026-10-19
 
 - First release: **quick settings**. A layer-shell panel under the bar's

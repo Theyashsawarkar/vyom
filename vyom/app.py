@@ -12,7 +12,7 @@ import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Gdk", "4.0")
 gi.require_version("Gtk4LayerShell", "1.0")
-from gi.repository import Gdk, Gio, Gtk  # noqa: E402
+from gi.repository import Gdk, Gio, GLib, Gtk  # noqa: E402
 
 from . import VERSION, config  # noqa: E402
 from .quick import QuickPanel  # noqa: E402
@@ -44,7 +44,16 @@ class Vyom(Gtk.Application):
         what = args[0] if args else "daemon"
         if what in ("quick", "reload", "quit"):
             self.activate_action(what, None)
+        elif what == "daemon" and self.quick is None:
+            # Build the panels now (tile checks run tools), so even the first
+            # key press after login only has to show one.
+            GLib.idle_add(self.prewarm)
         return 0
+
+    def prewarm(self):
+        if self.quick is None:
+            self.quick = QuickPanel(self, self.conf)
+        return False
 
     def on_quick(self, *_):
         if self.quick is None:

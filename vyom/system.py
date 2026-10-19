@@ -102,11 +102,12 @@ class Wifi(Tile):
     def available(self):
         return have("nmcli") and "wifi" in run("nmcli -t -f TYPE device")[1].split()
 
+    # `--rescan no`: the cached scan; a fresh one takes seconds.
     def status(self):
         on = run("nmcli radio wifi")[1] == "enabled"
         if not on:
             return False, "off"
-        ssid = next((l.split(":", 1)[1] for l in run("nmcli -t -f ACTIVE,SSID device wifi")[1].splitlines()
+        ssid = next((l.split(":", 1)[1] for l in run("nmcli -t -f ACTIVE,SSID device wifi list --rescan no")[1].splitlines()
                      if l.startswith("yes:")), "")
         if ssid:
             return True, ssid
