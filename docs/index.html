@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>vyom · Beautiful, keyboard-driven panels for Wayland: the runtime behind Vayu&#x27;s launcher and system panels.</title>
+<meta name="description" content="Beautiful, keyboard-driven panels for Wayland: the runtime behind Vayu&#x27;s launcher and system panels.">
+<meta property="og:title" content="vyom · Beautiful, keyboard-driven panels for Wayland: the runtime behind Vayu&#x27;s launcher and system panels.">
+<meta property="og:description" content="Beautiful, keyboard-driven panels for Wayland: the runtime behind Vayu&#x27;s launcher and system panels.">
+<meta name="theme-color" content="#11111b">
+<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/site.css">
+<style>:root{--accent:#cba6f7;--glow:#cba6f733}</style>
+</head>
+<body>
+<header class="top"><div class="in">
+<a class="brand" href="index.html"><img src="assets/logo.svg" alt=""><span>vyom <small>व्योम</small></span></a>
+<nav><a href="index.html" class="on">Overview</a><a href="changelog.html" class="">Changelog</a><a href="adr/index.html" class=" hide">Decisions</a><a class="gh" href="https://github.com/Theyashsawarkar/vyom">GitHub ↗</a></nav></div></header>
+<section class="hero"><div class="in"><div>
+<div class="eyebrow">panels runtime</div>
+<h1>vyom</h1>
+<div class="sa">व्योम <span>· “sky”</span></div>
+<p class="lead">Beautiful, keyboard-driven panels for Wayland: the runtime behind Vayu&#x27;s launcher and system panels.</p>
+<div class="cta"><a class="btn primary" href="#install">Install</a><a class="btn" href="https://github.com/Theyashsawarkar/vyom">GitHub ↗</a>
+<a class="btn" href="changelog.html">What's new in v0.2.8</a></div>
+<div class="meta"><span><b>v0.2.8</b> latest</span><span><b>11</b> releases</span><span><b>5</b> decisions recorded</span><span><b>MIT</b> license</span></div>
+</div><img class="logo" src="assets/logo.svg" alt="vyom logo"></div></section>
+<div class="wrap"><aside class="toc"><b>On this page</b><a class="l2" href="#the-tools">The tools</a><a class="l2" href="#install">Install</a><a class="l2" href="#usage">Usage</a><a class="l2" href="#configuration">Configuration</a><a class="l2" href="#writing-a-tool">Writing a tool</a><a class="l2" href="#troubleshooting">Troubleshooting</a><a class="l2" href="#contributing">Contributing</a><a class="l2" href="#license">License</a></aside><article>
+<p align="center">
+  <img alt="dvara, the app launcher: search on top, apps on the left, the selected app's preview and actions on the right" src="assets/screenshots/dvara.png" width="100%">
+</p>
+<p align="center">
+  <img alt="kendra, quick settings" src="assets/screenshots/kendra.png" width="32%">
+  <img alt="bhava, the emoji picker" src="assets/screenshots/bhava.png" width="66%">
+</p>
+<blockquote><p><em>Vyom</em> (व्योम) is Sanskrit for "sky": the space everything sits in.</p></blockquote>
+<p>Vyom replaces wofi in Vayu. Instead of scripts piping text rows into a generic list, each job is a <strong>tool</strong>: a small plugin with real layouts, live data, previews, toggles and a key for everything. Vyom is what they run in: one resident process with a shared panel, theme and plugin API, so every tool opens instantly and looks the same.</p>
+<h2 id="the-tools"><a class="anchor" href="#the-tools">#</a>The tools</h2>
+<p><strong>Each tool is its own repository</strong>, so you install only the ones you want:</p>
+<div class="table"><table><thead><tr><th>Tool</th><th></th><th>What it does</th></tr></thead><tbody><tr><td><a href="https://github.com/Theyashsawarkar/dvara">dvara</a></td><td>द्वार, gateway</td><td>app launcher: frequent apps first, app actions, open windows</td></tr><tr><td><a href="https://github.com/Theyashsawarkar/ganit">ganit</a></td><td>गणित, mathematics</td><td>calculator: answers as you type, units, currency, history</td></tr><tr><td><a href="https://github.com/Theyashsawarkar/smriti">smriti</a></td><td>स्मृति, memory</td><td>clipboard history: links, images, code told apart; pins</td></tr><tr><td><a href="https://github.com/Theyashsawarkar/bhava">bhava</a></td><td>भाव, feeling</td><td>emoji: a grid, recents, skin tones; types it for you</td></tr><tr><td><a href="https://github.com/Theyashsawarkar/tarang">tarang</a></td><td>तरंग, wave</td><td>Wi‑Fi with live signal, inline passwords, and the hotspot</td></tr><tr><td><a href="https://github.com/Theyashsawarkar/setu">setu</a></td><td>सेतु, bridge</td><td>Bluetooth: devices with battery, discovery, pairing</td></tr><tr><td><a href="https://github.com/Theyashsawarkar/doot">doot</a></td><td>दूत, messenger</td><td>your phone (KDE Connect): battery, send files, ring, browse</td></tr><tr><td><a href="https://github.com/Theyashsawarkar/patra">patra</a></td><td>पात्र, vessel</td><td>Docker: containers by project, live CPU/memory, logs</td></tr><tr><td><a href="https://github.com/Theyashsawarkar/suchana">suchana</a></td><td>सूचना, notice</td><td>notifications: on screen with actions, history, do not disturb</td></tr><tr><td><a href="https://github.com/Theyashsawarkar/raga">raga</a></td><td>राग, melody</td><td>YouTube music (into MPD) and video (mpv)</td></tr><tr><td><a href="https://github.com/Theyashsawarkar/mudra">mudra</a></td><td>मुद्रा, gesture</td><td>keybinding search by what it does; Enter runs it</td></tr><tr><td><a href="https://github.com/Theyashsawarkar/urja">urja</a></td><td>ऊर्जा, energy</td><td>battery: charge, time left, health, power profile</td></tr><tr><td><a href="https://github.com/Theyashsawarkar/vishram">vishram</a></td><td>विश्राम, rest</td><td>power menu: one letter each, countdown with cancel</td></tr><tr><td><a href="https://github.com/Theyashsawarkar/kendra">kendra</a></td><td>केन्द्र, centre</td><td>quick settings: toggles, sliders, battery, lock, power</td></tr></tbody></table></div>
+<h2 id="install"><a class="anchor" href="#install">#</a>Install</h2>
+<p>Requirements: Python 3.11+, PyGObject (with pycairo, for tools that draw), GTK 4, <a href="https://github.com/wmww/gtk4-layer-shell">gtk4-layer-shell</a>, a compositor with the layer-shell protocol (sway, Hyprland, river, Wayfire, labwc…), and a <a href="https://www.nerdfonts.com">Nerd Font</a> for the icons.</p>
+<pre class="code" data-lang="sh"><code># Arch
+sudo pacman -S --needed python-gobject python-cairo gtk4 gtk4-layer-shell ttf-jetbrains-mono-nerd
+
+git clone https://github.com/Theyashsawarkar/vyom ~/.local/share/vyom/core
+ln -s ~/.local/share/vyom/core/bin/vyom ~/.local/bin/vyom
+
+# then the tools you want, e.g.
+git clone https://github.com/Theyashsawarkar/dvara ~/.local/share/vyom/plugins/dvara
+git clone https://github.com/Theyashsawarkar/ganit ~/.local/share/vyom/plugins/ganit</code></pre>
+<p>In your compositor (sway shown):</p>
+<pre class="code" data-lang="sh"><code>exec vyom daemon                      # start it in the background at login
+bindsym $mod+d exec vyom dvara        # each tool on its own key; again closes it
+bindsym $mod+c exec vyom ganit
+layer_effects &quot;vyom&quot; {                # SwayFX: blurred glass behind every panel
+    blur enable
+    corner_radius 20
+    shadows enable
+}</code></pre>
+<h2 id="usage"><a class="anchor" href="#usage">#</a>Usage</h2>
+<pre class="code" data-lang=""><code>vyom &lt;tool&gt; [args]        open a tool (e.g. vyom tarang, vyom raga video); again closes it
+vyom dmenu [-p PROMPT] [--markup] &lt; lines
+                          pick one line: printed on stdout, exit 1 on Esc (like wofi --dmenu)
+vyom list                 installed tools, and why one is skipped
+vyom daemon | reload | quit
+vyom quick                quick settings (the kendra tool)</code></pre>
+<p>Vyom keeps one resident process (a GTK single-instance app). Once it's running, <code>vyom &lt;tool&gt;</code> only sends it a D-Bus message, so a panel opens in well under a tenth of a second. <code>vyom dmenu</code> makes any script's picker a Vyom panel: <code>printf &#x27;Accept\nReject\n&#x27; | vyom dmenu -p &quot;Pair?&quot;</code>.</p>
+<p>Every panel: type to search, <code>Up</code>/<code>Down</code> (or <code>Ctrl+K</code>/<code>Ctrl+J</code>) move, <code>Page Up</code>/<code>Page Down</code> jump, <code>Enter</code> runs, <code>Tab</code> switches to the next tool, <code>Esc</code> closes. Each tool adds its own keys (shown in its footer and README).</p>
+<h2 id="configuration"><a class="anchor" href="#configuration">#</a>Configuration</h2>
+<p><code>~/.config/vyom/config.toml</code>, all optional (<a href="https://github.com/Theyashsawarkar/vyom/blob/main/examples/config.toml"><code>examples/config.toml</code></a>):</p>
+<pre class="code" data-lang="toml"><code>[vyom]
+disabled = [&quot;raga&quot;]          # installed tools not to load
+cycle = [&quot;dvara&quot;, &quot;ganit&quot;]   # Tab order
+width = 900                  # every panel opens at this size (times scale = 1.25)
+height = 520
+opacity = 0.72               # panel background: 1 solid, lower = more glass
+
+[plugin.tarang]              # each tool&#x27;s settings: see its README
+hotspot_command = &quot;vayu-hotspot&quot;</code></pre>
+<p><code>~/.config/vyom/style.css</code> loads last, to restyle anything.</p>
+<h2 id="writing-a-tool"><a class="anchor" href="#writing-a-tool">#</a>Writing a tool</h2>
+<p>A tool is a directory with a <code>plugin.toml</code> and a Python package of the same name exporting a <code>Plugin</code> class:</p>
+<pre class="code" data-lang="toml"><code># plugin.toml
+name = &quot;hello&quot;
+title = &quot;Hello&quot;
+version = &quot;0.1.0&quot;
+vyom = &quot;0.2&quot;
+icon = &quot;󰞅&quot;          # Nerd Font glyph for the mode pill
+color = &quot;mauve&quot;     # sky blue teal red peach mauve yellow green rose lavender
+requires = []       # tools it needs; it&#x27;s skipped (with the reason) without them</code></pre>
+<pre class="code" data-lang="python"><code># hello/__init__.py
+from vyom import Hint, Plugin as Base, Row, Section, ui, util
+
+class Plugin(Base):
+    preview = True                       # a preview pane on the right
+    hints = [Hint(&quot;Enter&quot;, &quot;greet&quot;)]
+
+    def search(self, query):             # runs in a worker thread
+        return [Section(&quot;People&quot;), Row(&quot;World&quot;, &quot;the usual&quot;, icon=&quot;󰞅&quot;, data=&quot;world&quot;)]
+
+    def build_preview(self, row):        # main thread
+        return ui.vbox(ui.title(f&quot;Hello, {row.title}&quot;), ui.meta(&quot;a preview&quot;))
+
+    def activate(self, row, mods):       # Enter; return True to close
+        util.notify(&quot;Hello&quot;, row.data)
+        return True</code></pre>
+<p>Layouts: <code>&quot;list&quot;</code> (rows, sections, preview), <code>&quot;grid&quot;</code> (cells, like the emoji picker) and <code>&quot;card&quot;</code> (build the whole panel in <code>build_card()</code>). See <code>vyom/plugin.py</code> for every hook (<code>header_extra</code>, <code>key</code>, <code>opened</code>, <code>closed</code>, <code>live</code>, <code>anchor</code>…), <code>vyom/ui.py</code> for widgets, and any tool repo for a worked example. Put it in <code>~/.local/share/vyom/plugins/hello</code> (or a directory in <code>$VYOM_PLUGIN_PATH</code>) and <code>vyom reload</code>.</p>
+<h2 id="troubleshooting"><a class="anchor" href="#troubleshooting">#</a>Troubleshooting</h2>
+<ul><li><strong>A tool doesn't open.</strong> <code>vyom list</code> shows every installed tool and why one is skipped (a missing requirement, or a Vyom too old for it).</li><li><strong>Something failed.</strong> The daemon logs to <code>~/.local/state/vyom/daemon.log</code>; look for a <code>Traceback</code>. <code>vyom quit; vyom &lt;tool&gt;</code> restarts it.</li><li><strong>"Failed to initialize layer surface" / panels open as normal windows.</strong> gtk4-layer-shell has to load before GTK; <code>vyom daemon</code> does this itself through <code>LD_PRELOAD</code>, so start Vyom with <code>vyom daemon</code>, not <code>python -m vyom.app</code>.</li><li><strong>No blur or rounded corners.</strong> That's the compositor's part: on SwayFX use the <code>layer_effects &quot;vyom&quot;</code> block above; Hyprland: <code>layerrule = blur, vyom</code>.</li><li><strong>Icons show as boxes.</strong> Install a <a href="https://www.nerdfonts.com">Nerd Font</a>.</li></ul>
+<h2 id="contributing"><a class="anchor" href="#contributing">#</a>Contributing</h2>
+<p>Bug reports, ideas and pull requests are welcome: see <a href="https://github.com/Theyashsawarkar/vyom/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a> for the development setup and the API rules, and <a href="changelog.html">CHANGELOG.md</a> for what changed in each release. A problem with one tool belongs in that tool's repository. Please report security issues privately (<a href="https://github.com/Theyashsawarkar/vyom/blob/main/SECURITY.md">SECURITY.md</a>).</p>
+<h2 id="license"><a class="anchor" href="#license">#</a>License</h2>
+<p><a href="https://github.com/Theyashsawarkar/vyom/blob/main/LICENSE">MIT</a></p>
+</article></div>
+<footer><div class="in"><div><h4>Desktop</h4><a href="https://theyashsawarkar.github.io/vayu/" class="">vayu <span>वायु · the keyboard-driven Wayland desktop</span></a></div><div><h4>Apps</h4><a href="https://theyashsawarkar.github.io/nada/" class="">nada <span>नाद · music player</span></a><a href="https://theyashsawarkar.github.io/sangam/" class="">sangam <span>संगम · pull requests in the terminal</span></a><a href="https://theyashsawarkar.github.io/anumati/" class="">anumati <span>अनुमति · root commands for AI agents</span></a></div><div><h4>Vyom</h4><a href="https://theyashsawarkar.github.io/vyom/" class="me">vyom <span>व्योम · panels runtime</span></a></div><div><h4>Vyom tools</h4><a href="https://theyashsawarkar.github.io/dvara/" class="">dvara <span>द्वार · apps</span></a><a href="https://theyashsawarkar.github.io/ganit/" class="">ganit <span>गणित · calculator</span></a><a href="https://theyashsawarkar.github.io/smriti/" class="">smriti <span>स्मृति · clipboard</span></a><a href="https://theyashsawarkar.github.io/bhava/" class="">bhava <span>भाव · emoji</span></a><a href="https://theyashsawarkar.github.io/tarang/" class="">tarang <span>तरंग · Wi‑Fi</span></a><a href="https://theyashsawarkar.github.io/setu/" class="">setu <span>सेतु · Bluetooth</span></a><a href="https://theyashsawarkar.github.io/doot/" class="">doot <span>दूत · phone</span></a><a href="https://theyashsawarkar.github.io/patra/" class="">patra <span>पात्र · Docker</span></a><a href="https://theyashsawarkar.github.io/suchana/" class="">suchana <span>सूचना · notifications</span></a><a href="https://theyashsawarkar.github.io/raga/" class="">raga <span>राग · YouTube</span></a><a href="https://theyashsawarkar.github.io/mudra/" class="">mudra <span>मुद्रा · keybindings</span></a><a href="https://theyashsawarkar.github.io/urja/" class="">urja <span>ऊर्जा · battery</span></a><a href="https://theyashsawarkar.github.io/vishram/" class="">vishram <span>विश्राम · power menu</span></a><a href="https://theyashsawarkar.github.io/kendra/" class="">kendra <span>केन्द्र · quick settings</span></a></div></div>
+<div class="bottom">vyom is free software under the MIT license · <a href="https://github.com/Theyashsawarkar/vyom">source</a> · <a href="https://github.com/Theyashsawarkar/vyom/issues">issues</a> · <a href="changelog.html">changelog</a> · part of <a href="https://theyashsawarkar.github.io/vayu/">Vayu</a></div></footer>
+<script>
+document.querySelectorAll('pre.code').forEach(p=>{const b=document.createElement('button');b.className='copy';b.textContent='Copy';
+b.onclick=()=>{navigator.clipboard.writeText(p.innerText.replace(/^Copy/,'')).then(()=>{b.textContent='Copied';setTimeout(()=>b.textContent='Copy',1200)})};p.appendChild(b)});
+const links=[...document.querySelectorAll('.toc a')];if(links.length){const hs=links.map(a=>document.getElementById(a.hash.slice(1))).filter(Boolean);
+const on=()=>{let cur=hs[0];for(const h of hs){if(h.getBoundingClientRect().top<120)cur=h}links.forEach(a=>a.classList.toggle('on',cur&&a.hash==='#'+cur.id))};
+addEventListener('scroll',on,{passive:true});on()}
+</script>
+</body>
+</html>

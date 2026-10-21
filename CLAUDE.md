@@ -29,3 +29,4 @@ on any layer-shell compositor without Vayu.
 - Test live: tools linked into ~/.local/share/vyom/plugins; `bin/vyom quit;
   bin/vyom <tool>`, screenshot (grim), close it; `grep Traceback
   ~/.local/state/vyom/daemon.log`.
+- The website (docs/, GitHub Pages) is generated: after changing README.md, CHANGELOG.md or docs/adr/, run `python3 scripts/build-site.py` and commit docs/ (CI checks it). A significant design decision gets a new ADR in docs/adr/ (next number; supersede, never rewrite).

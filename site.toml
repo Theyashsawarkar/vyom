@@ -1,0 +1,8 @@
+# The project website (docs/, GitHub Pages): built by scripts/build-site.py
+name = "vyom"
+sanskrit = "व्योम"
+meaning = "sky"
+tagline = "Beautiful, keyboard-driven panels for Wayland: the runtime behind Vayu's launcher and system panels."
+color = "mauve"
+kind = "panels runtime"
+logo = "assets/logo.svg"
