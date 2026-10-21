@@ -2,6 +2,13 @@
 
 Newest first. Releases are tags (`vX.Y.Z`).
 
+## v0.2.7 -- 2026-10-21
+
+- Documentation for open source: a logo and banner, a full README (features,
+  install, usage, configuration, troubleshooting, the whole Vyom family),
+  CONTRIBUTING, SECURITY and CODE_OF_CONDUCT, issue and pull request
+  templates, and CI (compiles, checks the version has a changelog entry).
+
 ## v0.2.6 -- 2026-10-19
 
 - Cards (power menu, battery, quick settings) keep the tool's own width

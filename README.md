@@ -1,14 +1,55 @@
 <p align="center">
-  <b>Vyom</b> (व्योम, "sky": the space everything sits in)<br>
-  Beautiful, keyboard-driven panels for wlroots desktops (sway, Hyprland, river…).<br>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/banner-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="assets/banner-light.svg">
+    <img alt="vyom" src="assets/banner-dark.svg" width="560">
+  </picture>
+</p>
+
+<p align="center">
+  <b>Beautiful, keyboard-driven panels for wlroots desktops (sway, Hyprland, river…).</b><br>
   The runtime behind <a href="https://github.com/Theyashsawarkar/vayu">Vayu</a>'s launcher and system panels; works on its own.
 </p>
+
+<p align="center">
+  <a href="https://github.com/Theyashsawarkar/vyom/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Theyashsawarkar/vyom/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/Theyashsawarkar/vyom/releases"><img alt="Release" src="https://img.shields.io/github/v/release/Theyashsawarkar/vyom?color=cba6f7&label=release"></a>
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-f5e0dc"></a>
+  <img alt="Python 3.11+" src="https://img.shields.io/badge/python-3.11%2B-a6e3a1">
+  <img alt="GTK 4" src="https://img.shields.io/badge/GTK-4-89b4fa">
+  <img alt="Wayland" src="https://img.shields.io/badge/wayland-layer--shell-94e2d5">
+</p>
+
+<p align="center">
+  <img alt="dvara, the app launcher: search on top, apps on the left, the selected app's preview and actions on the right" src="assets/screenshots/dvara.png" width="100%">
+</p>
+
+<p align="center">
+  <img alt="kendra, quick settings" src="assets/screenshots/kendra.png" width="32%">
+  <img alt="bhava, the emoji picker" src="assets/screenshots/bhava.png" width="66%">
+</p>
+
+> *Vyom* (व्योम) is Sanskrit for "sky": the space everything sits in.
 
 Vyom replaces wofi in Vayu. Instead of scripts piping text rows into a
 generic list, each job is a **tool**: a small plugin with real layouts,
 live data, previews, toggles and a key for everything. Vyom is what they
 run in: one resident process with a shared panel, theme and plugin API, so
 every tool opens instantly and looks the same.
+
+
+## Contents
+
+- [The tools](#the-tools)
+- [Install](#install)
+- [Usage](#usage)
+- [Configuration](#configuration)
+- [Writing a tool](#writing-a-tool)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
+- [License](#license)
+
+## The tools
 
 **Each tool is its own repository**, so you install only the ones you want:
 
@@ -140,6 +181,27 @@ emoji picker) and `"card"` (build the whole panel in `build_card()`). See
 for a worked example. Put it in `~/.local/share/vyom/plugins/hello` (or a
 directory in `$VYOM_PLUGIN_PATH`) and `vyom reload`.
 
+## Troubleshooting
+
+- **A tool doesn't open.** `vyom list` shows every installed tool and why
+  one is skipped (a missing requirement, or a Vyom too old for it).
+- **Something failed.** The daemon logs to `~/.local/state/vyom/daemon.log`;
+  look for a `Traceback`. `vyom quit; vyom <tool>` restarts it.
+- **"Failed to initialize layer surface" / panels open as normal windows.**
+  gtk4-layer-shell has to load before GTK; `vyom daemon` does this itself
+  through `LD_PRELOAD`, so start Vyom with `vyom daemon`, not `python -m vyom.app`.
+- **No blur or rounded corners.** That's the compositor's part: on SwayFX use
+  the `layer_effects "vyom"` block above; Hyprland: `layerrule = blur, vyom`.
+- **Icons show as boxes.** Install a [Nerd Font](https://www.nerdfonts.com).
+
+## Contributing
+
+Bug reports, ideas and pull requests are welcome: see
+[CONTRIBUTING.md](CONTRIBUTING.md) for the development setup and the API
+rules, and [CHANGELOG.md](CHANGELOG.md) for what changed in each release.
+A problem with one tool belongs in that tool's repository. Please report
+security issues privately ([SECURITY.md](SECURITY.md)).
+
 ## License
 
-MIT
+[MIT](LICENSE)
