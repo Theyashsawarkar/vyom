@@ -132,12 +132,16 @@ cycle = ["dvara", "ganit"]   # Tab order
 width = 900                  # every panel opens at this size (times scale = 1.25)
 height = 520
 opacity = 0.72               # panel background: 1 solid, lower = more glass
+css = ["~/.local/state/varna/vyom.css"]   # more stylesheets, loaded last (a theme's colours)
 
 [plugin.tarang]              # each tool's settings: see its README
 hotspot_command = "vayu-hotspot"
 ```
 
-`~/.config/vyom/style.css` loads last, to restyle anything.
+`~/.config/vyom/style.css` loads after the tools' styles, to restyle anything;
+the `css` files load after that. Colours are named (`@base`, `@text`, `@accent`,
+`@mauve`...: Catppuccin Mocha by default), so a theme only has to redefine
+them: [varna](https://github.com/Theyashsawarkar/varna) writes such a file.
 
 ## Writing a tool
 

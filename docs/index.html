@@ -24,8 +24,8 @@
 <div class="sa">व्योम <span>· “sky”</span></div>
 <p class="lead">Beautiful, keyboard-driven panels for Wayland: the runtime behind Vayu&#x27;s launcher and system panels.</p>
 <div class="cta"><a class="btn primary" href="#install">Install</a><a class="btn" href="https://github.com/Theyashsawarkar/vyom">GitHub ↗</a>
-<a class="btn" href="changelog.html">What's new in v0.2.8</a></div>
-<div class="meta"><span><b>v0.2.8</b> latest</span><span><b>11</b> releases</span><span><b>5</b> decisions recorded</span><span><b>MIT</b> license</span></div>
+<a class="btn" href="changelog.html">What's new in v0.2.9</a></div>
+<div class="meta"><span><b>v0.2.9</b> latest</span><span><b>12</b> releases</span><span><b>5</b> decisions recorded</span><span><b>MIT</b> license</span></div>
 </div><img class="logo" src="assets/logo.svg" alt="vyom logo"></div></section>
 <div class="wrap"><aside class="toc"><b>On this page</b><a class="l2" href="#the-tools">The tools</a><a class="l2" href="#install">Install</a><a class="l2" href="#usage">Usage</a><a class="l2" href="#configuration">Configuration</a><a class="l2" href="#writing-a-tool">Writing a tool</a><a class="l2" href="#troubleshooting">Troubleshooting</a><a class="l2" href="#contributing">Contributing</a><a class="l2" href="#license">License</a></aside><article>
 <p align="center">
@@ -77,10 +77,11 @@ cycle = [&quot;dvara&quot;, &quot;ganit&quot;]   # Tab order
 width = 900                  # every panel opens at this size (times scale = 1.25)
 height = 520
 opacity = 0.72               # panel background: 1 solid, lower = more glass
+css = [&quot;~/.local/state/varna/vyom.css&quot;]   # more stylesheets, loaded last (a theme&#x27;s colours)
 
 [plugin.tarang]              # each tool&#x27;s settings: see its README
 hotspot_command = &quot;vayu-hotspot&quot;</code></pre>
-<p><code>~/.config/vyom/style.css</code> loads last, to restyle anything.</p>
+<p><code>~/.config/vyom/style.css</code> loads after the tools' styles, to restyle anything; the <code>css</code> files load after that. Colours are named (<code>@base</code>, <code>@text</code>, <code>@accent</code>, <code>@mauve</code>...: Catppuccin Mocha by default), so a theme only has to redefine them: <a href="https://github.com/Theyashsawarkar/varna">varna</a> writes such a file.</p>
 <h2 id="writing-a-tool"><a class="anchor" href="#writing-a-tool">#</a>Writing a tool</h2>
 <p>A tool is a directory with a <code>plugin.toml</code> and a Python package of the same name exporting a <code>Plugin</code> class:</p>
 <pre class="code" data-lang="toml"><code># plugin.toml

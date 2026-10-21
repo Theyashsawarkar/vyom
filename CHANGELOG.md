@@ -2,6 +2,14 @@
 
 Newest first. Releases are tags (`vX.Y.Z`).
 
+## v0.2.9 -- 2026-10-21
+
+- **Themes**: `[vyom] css = [...]` loads more stylesheets after everything
+  else, e.g. [varna](https://github.com/Theyashsawarkar/varna)'s colours.
+  The panel background and the selection, focus and border colours are now
+  named (`@base`, `@crust`, and a new `@accent`, mauve by default) instead
+  of fixed hex codes, so a theme that redefines the names recolours all of Vyom.
+
 ## v0.2.8 -- 2026-10-21
 
 - A website (GitHub Pages, https://theyashsawarkar.github.io/vyom/): the README as a home page, the

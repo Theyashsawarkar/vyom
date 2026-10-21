@@ -24,14 +24,16 @@
 @define-color sky #89dceb;
 @define-color blue #89b4fa;
 @define-color lavender #b4befe;
+/* The highlight colour; a theme (varna's vyom.css) can redefine it. */
+@define-color accent @mauve;
 
 window.vyom { background: transparent; }
 
 .vyom-panel {
   border-radius: 20px;
-  background-color: alpha(#1e1e2e, 0.82);
+  background-color: alpha(@base, 0.82);
   background-image: linear-gradient(to bottom, alpha(white, 0.06), alpha(white, 0) 35%);
-  border: 1px solid alpha(#cba6f7, 0.28);
+  border: 1px solid alpha(@accent, 0.28);
   color: @text;
   font-family: "Inter", "Noto Sans", sans-serif;
   font-size: 13px;
@@ -49,7 +51,7 @@ text.query, .query { font-size: 15px; color: @text; caret-color: @mauve; backgro
 .results { background: none; }
 list.list, .list { background: none; padding: 6px 8px; }
 .list row { padding: 0; border-radius: 12px; background: none; margin: 1px 0; outline: none; }
-.list row:selected { background: alpha(#cba6f7, 0.14); box-shadow: inset 0 0 0 1px alpha(#cba6f7, 0.22); }
+.list row:selected { background: alpha(@accent, 0.14); box-shadow: inset 0 0 0 1px alpha(@accent, 0.22); }
 .list row:hover:not(:selected) { background: alpha(white, 0.04); }
 .list row.section-row { margin-top: 6px; }
 .row { padding: 7px 9px; }
@@ -84,17 +86,17 @@ list.list, .list { background: none; padding: 6px 8px; }
 /* ---- grid (emoji) ---- */
 flowbox.grid { padding: 8px 10px; }
 flowbox.grid flowboxchild { padding: 0; border-radius: 12px; outline: none; }
-flowbox.grid flowboxchild:selected { background: alpha(#cba6f7, 0.18); box-shadow: inset 0 0 0 1px alpha(#cba6f7, 0.35); }
+flowbox.grid flowboxchild:selected { background: alpha(@accent, 0.18); box-shadow: inset 0 0 0 1px alpha(@accent, 0.35); }
 .cell { font-size: 28px; padding: 6px 0; min-height: 44px; }
 
 /* ---- preview pane ---- */
-.preview { border-left: 1px solid alpha(white, 0.06); background: alpha(#11111b, 0.22); }
+.preview { border-left: 1px solid alpha(white, 0.06); background: alpha(@crust, 0.22); }
 .preview-inner { padding: 16px; }
 .p-title { font-size: 16px; font-weight: 700; }
 .p-meta { color: @overlay1; font-size: 12px; }
 .p-body { color: @subtext1; font-size: 12.5px; }
 .p-mono { font-family: "JetBrainsMono Nerd Font"; font-size: 11.5px; color: @subtext0;
-          background: alpha(#11111b, 0.55); border-radius: 10px; padding: 10px; }
+          background: alpha(@crust, 0.55); border-radius: 10px; padding: 10px; }
 .kv-key { color: @overlay1; font-size: 12.5px; }
 .kv-val { font-size: 12.5px; }
 
@@ -104,7 +106,7 @@ button.btn {
   background: alpha(white, 0.06); border: 1px solid alpha(white, 0.08); color: @text; box-shadow: none;
 }
 button.btn:hover { background: alpha(white, 0.11); }
-button.btn:focus-visible { outline: 2px solid alpha(#cba6f7, 0.8); outline-offset: 1px; }
+button.btn:focus-visible { outline: 2px solid alpha(@accent, 0.8); outline-offset: 1px; }
 button.btn.primary { background: @mauve; color: @crust; border-color: transparent; }
 button.btn.primary:hover { background: @lavender; }
 button.btn.danger { background: alpha(@red, 0.16); color: @red; border-color: alpha(@red, 0.3); }
@@ -115,7 +117,7 @@ switch:checked { background: @green; }
 switch slider { border-radius: 999px; background: @crust; min-width: 16px; min-height: 16px; margin: 2px; }
 
 /* ---- footer ---- */
-.foot { padding: 9px 16px; border-top: 1px solid alpha(white, 0.06); background: alpha(#11111b, 0.25);
+.foot { padding: 9px 16px; border-top: 1px solid alpha(white, 0.06); background: alpha(@crust, 0.25);
         border-radius: 0 0 20px 20px; }
 .hint { color: @overlay1; font-family: "JetBrainsMono Nerd Font"; font-size: 11px; }
 .status { color: @subtext0; font-size: 11.5px; }
@@ -130,4 +132,4 @@ progressbar progress { min-height: 6px; border-radius: 6px; background: @mauve; 
 scale trough { min-height: 6px; border-radius: 6px; background: alpha(white, 0.10); border: none; }
 scale highlight { border-radius: 6px; background: @mauve; border: none; }
 scale slider { min-width: 16px; min-height: 16px; margin: -6px 0; border-radius: 8px; background: @text;
-               border: none; box-shadow: 0 0 0 3px alpha(#cba6f7, 0.25); }
+               border: none; box-shadow: 0 0 0 3px alpha(@accent, 0.25); }

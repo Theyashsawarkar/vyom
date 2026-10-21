@@ -147,10 +147,17 @@ class Vyom(Gtk.Application):
             opacity = min(1.0, max(0.3, float(self.conf.get("vyom", {}).get("opacity", 0.72))))
         except (TypeError, ValueError):
             opacity = 0.72
-        css.append(f".vyom-panel {{ background-color: alpha(#1e1e2e, {opacity:.2f}); }}")
+        css.append(f".vyom-panel {{ background-color: alpha(@base, {opacity:.2f}); }}")
         user = os.path.join(os.path.dirname(config.PATH), "style.css")
         if os.path.exists(user):
             css.append(open(user).read())
+        # [vyom] css: more stylesheets, last (a theme engine's colours, e.g.
+        # varna's ~/.local/state/varna/vyom.css redefining @base, @mauve...).
+        extra = self.conf.get("vyom", {}).get("css", [])
+        for p in [extra] if isinstance(extra, str) else extra:
+            p = os.path.expanduser(str(p))
+            if os.path.exists(p):
+                css.append(open(p).read())
         self.css.load_from_string("\n".join(css))
         Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), self.css,
                                                   Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
