@@ -12,7 +12,7 @@ git clone https://github.com/Theyashsawarkar/vyom ~/code/vyom
 ln -sfn ~/code/vyom ~/.local/share/vyom/core
 ln -sfn ~/code/vyom/bin/vyom ~/.local/bin/vyom
 vyom quit; vyom dvara          # restart the daemon with your code
-grep -A20 Traceback ~/.local/state/vyom/daemon.log
+journalctl --user -u vyom -u vyom-daemon -b | grep -A20 Traceback
 python -m py_compile vyom/*.py bin/vyom
 ```
 

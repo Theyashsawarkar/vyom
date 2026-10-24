@@ -1,6 +1,7 @@
 """Small helpers every plugin uses: running commands, the clipboard,
 notifications, state files, fuzzy matching."""
 import json
+import logging
 import os
 import re
 import shutil
@@ -8,6 +9,8 @@ import subprocess
 
 STATE = os.path.join(os.environ.get("XDG_STATE_HOME") or os.path.expanduser("~/.local/state"), "vyom")
 CACHE = os.path.join(os.environ.get("XDG_CACHE_HOME") or os.path.expanduser("~/.cache"), "vyom")
+
+log = logging.getLogger("vyom.util")
 
 
 def expand(cmd):
@@ -21,8 +24,11 @@ def run(cmd, timeout=5, input=None):
     try:
         r = subprocess.run(expand(cmd) if isinstance(cmd, str) else cmd, shell=isinstance(cmd, str),
                            capture_output=True, text=True, timeout=timeout, input=input)
+        if r.returncode:
+            log.debug("%s: exit %d: %s", cmd, r.returncode, r.stderr.strip()[-500:])
         return r.returncode, r.stdout.strip()
-    except (OSError, subprocess.TimeoutExpired):
+    except (OSError, subprocess.TimeoutExpired) as e:
+        log.debug("%s: %s", cmd, e)
         return 127, ""
 
 
@@ -31,8 +37,11 @@ def run_full(cmd, timeout=30):
     try:
         r = subprocess.run(expand(cmd) if isinstance(cmd, str) else cmd, shell=isinstance(cmd, str),
                            capture_output=True, text=True, timeout=timeout)
+        if r.returncode:
+            log.debug("%s: exit %d: %s", cmd, r.returncode, r.stderr.strip()[-500:])
         return r.returncode, r.stdout, r.stderr
     except (OSError, subprocess.TimeoutExpired) as e:
+        log.debug("%s: %s", cmd, e)
         return 127, "", str(e)
 
 

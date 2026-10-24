@@ -10,6 +10,7 @@
 
   [plugin.<name>]                # each plugin's own settings (its README)
 """
+import logging
 import os
 import tomllib
 
@@ -23,7 +24,7 @@ def load():
     except FileNotFoundError:
         conf = {}
     except tomllib.TOMLDecodeError as e:
-        print(f"vyom: {PATH}: {e}; using defaults", flush=True)
+        logging.getLogger("vyom").warning("%s: %s; using defaults", PATH, e)
         conf = {}
     conf.setdefault("vyom", {})
     conf.setdefault("plugin", {})

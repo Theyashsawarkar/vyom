@@ -9,6 +9,7 @@ bin/vyom talks to it over D-Bus (org.gtk.Actions on dev.vayu.Vyom):
 """
 import importlib
 import json
+import logging
 import os
 import sys
 import threading
@@ -21,9 +22,12 @@ gi.require_version("Gdk", "4.0")
 gi.require_version("Gtk4LayerShell", "1.0")
 from gi.repository import Gdk, Gio, GLib, Gtk  # noqa: E402
 
-from . import config, util  # noqa: E402
+from . import VERSION, config, util  # noqa: E402
+from . import log as vlog  # noqa: E402
 from .panel import Panel  # noqa: E402
 from .plugin import Hint, Plugin, Row  # noqa: E402
+
+log = logging.getLogger("vyom")
 
 APP_ID = "dev.vayu.Vyom"
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -175,7 +179,7 @@ class Vyom(Gtk.Application):
                 meta = read_meta(d)
                 name = meta["name"]
             except (OSError, KeyError, tomllib.TOMLDecodeError) as e:
-                print(f"vyom: {d}: bad plugin.toml ({e})", file=sys.stderr)
+                log.error("%s: bad plugin.toml (%s)", d, e)
                 continue
             if name in disabled or name in self.plugins:
                 continue
@@ -196,7 +200,7 @@ class Vyom(Gtk.Application):
                 ok, why = p.available()
             except Exception as e:  # one broken plugin must not stop the rest
                 self.skipped[name] = f"failed to load: {e}"
-                print(f"vyom: plugin {name}: {e}", file=sys.stderr)
+                log.exception("plugin %s failed to load", name)
                 continue
             if not ok:
                 self.skipped[name] = why
@@ -204,7 +208,7 @@ class Vyom(Gtk.Application):
             self.plugins[name] = p
             self.order.append(name)
         for name, why in self.skipped.items():
-            print(f"vyom: plugin {name} skipped: {why}", file=sys.stderr)
+            log.info("plugin %s skipped: %s", name, why)
 
     def do_command_line(self, cmdline):
         args = cmdline.get_arguments()[1:]
@@ -272,7 +276,13 @@ class Vyom(Gtk.Application):
 
 
 def main(argv=None):
-    return Vyom().run(argv if argv is not None else sys.argv)
+    argv = list(argv if argv is not None else sys.argv)
+    debug = "--debug" in argv
+    if debug:
+        argv.remove("--debug")
+    vlog.setup("vyom", debug=debug or None)
+    log.info("vyom %s starting", VERSION)
+    return Vyom().run(argv)
 
 
 if __name__ == "__main__":

@@ -204,8 +204,8 @@ directory in `$VYOM_PLUGIN_PATH`) and `vyom reload`.
 
 - **A tool doesn't open.** `vyom list` shows every installed tool and why
   one is skipped (a missing requirement, or a Vyom too old for it).
-- **Something failed.** The daemon logs to `~/.local/state/vyom/daemon.log`;
-  look for a `Traceback`. `vyom quit; vyom <tool>` restarts it.
+- **Something failed.** The daemon logs to the journal: `journalctl --user -u vyom -u vyom-daemon -b`
+  (without systemd: `~/.local/state/vyom/daemon.log`); look for a `Traceback`. `vyom quit; vyom <tool>` restarts it.
 - **"Failed to initialize layer surface" / panels open as normal windows.**
   gtk4-layer-shell has to load before GTK; `vyom daemon` does this itself
   through `LD_PRELOAD`, so start Vyom with `vyom daemon`, not `python -m vyom.app`.

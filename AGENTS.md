@@ -26,7 +26,10 @@ on any layer-shell compositor without Vayu.
   (Vayu's keybinding search reads them) and is in the README.
 - Every change: CHANGELOG.md entry; releases are tags with `VERSION` in
   `vyom/__init__.py`. `python -m py_compile vyom/*.py bin/vyom` must pass.
-- Test live: tools linked into ~/.local/share/vyom/plugins; `bin/vyom quit;
-  bin/vyom <tool>`, screenshot (grim), close it; `grep Traceback
-  ~/.local/state/vyom/daemon.log`.
+- Test live without touching the user's screen: a headless sway
+  (WLR_BACKENDS=headless) with its own D-Bus session (`dbus-run-session`)
+  running `bin/vyom daemon` and `bin/vyom <tool>`, `grim` for screenshots,
+  `wtype -s 250` for keys (without the delay wtype can drop the first key).
+  Never restart the user's own Vyom to test. Errors: the headless daemon's
+  stderr, or `journalctl --user -u vyom -u vyom-daemon -b | grep -A20 Traceback`.
 - The website (docs/, GitHub Pages) is generated: after changing README.md, CHANGELOG.md or docs/adr/, run `python3 scripts/build-site.py` and commit docs/ (CI checks it). A significant design decision gets a new ADR in docs/adr/ (next number; supersede, never rewrite).

@@ -2,6 +2,26 @@
 
 Newest first. Releases are tags (`vX.Y.Z`).
 
+## v0.3.2 -- 2026-10-24
+
+- **Logs go to the journal, with tracebacks.** `vyom` starts the daemon as
+  your `vyom.service` if you have one, else as a transient unit
+  (`systemd-run`): `journalctl --user -u vyom -u vyom-daemon`. Only without
+  systemd does it write `~/.local/state/vyom/daemon.log`, now kept under
+  1 MB (it grew forever). A plugin that fails to load, a search() or
+  background job that raises, and any exception nobody caught (a GTK
+  callback, a thread) are logged with their traceback, not one line or
+  nothing. Each line carries its level, so `journalctl -p warning` finds
+  them.
+- `vyom/log.py`: the setup, standard library only. A tool logs with
+  `logging.getLogger("vyom.<name>")`, no import from Vyom needed.
+  `VYOM_DEBUG=1` (or `vyom daemon --debug`) adds debug messages, among them
+  every command `util.run` ran that failed, with its exit code and stderr.
+- A broken config.toml is a warning in the log (it was printed to stdout).
+- The README, CONTRIBUTING, agent notes and the bug report form point to
+  the journal; agent notes say to test in a headless sway, never on the
+  user's own desktop.
+
 ## v0.3.1 -- 2026-10-24
 
 - **Apps started from Vyom no longer inherit `LD_PRELOAD`.** `vyom daemon`

@@ -7,6 +7,7 @@ Up/Down jump, Enter activates, Shift/Ctrl+Enter are a row's other actions
 (the plugin says which in its hints), Tab opens the next tool, Esc closes.
 A tool's tabs switch with Ctrl+H / Ctrl+L and Ctrl+1..9 in every tool.
 """
+import logging
 import os
 import threading
 
@@ -375,6 +376,7 @@ class Panel(Gtk.ApplicationWindow):
             try:
                 res = self.plugin.search(q)
             except Exception as e:  # a plugin bug shouldn't kill the panel
+                logging.getLogger(f"vyom.{self.plugin.name}").exception("search(%r) failed", q)
                 res = [Row(f"{self.plugin.name}: {e}", icon="", color="red")]
             GLib.idle_add(self.show_results, gen, res, keep)
         threading.Thread(target=work, daemon=True).start()
@@ -534,6 +536,7 @@ class Panel(Gtk.ApplicationWindow):
             try:
                 r = work()
             except Exception as e:
+                logging.getLogger(f"vyom.{self.plugin.name}").exception("background work failed")
                 r = e
             if then is not None:
                 GLib.idle_add(lambda: (then(r), False)[1])
