@@ -268,6 +268,7 @@ class Vyom(Gtk.Application):
         """Re-reads config.toml and the CSS; panels rebuild."""
         self.close_all()
         for p in self.panels.values():
+            p.release_card()   # a plugin's cached card must outlive its panel
             p.destroy()
         self.panels = {}
         self.conf = config.load()

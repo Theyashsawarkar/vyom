@@ -341,6 +341,14 @@ class Panel(Gtk.ApplicationWindow):
         return foot
 
     # ------------------------------------------------------------- showing
+    def release_card(self):
+        """Lets go of the plugin's card (before this panel is destroyed), so
+        the plugin can show the same card in the next panel."""
+        holder = getattr(self, "card_holder", None)
+        child = holder.get_first_child() if holder is not None else None
+        if child is not None:
+            holder.remove(child)
+
     def show_panel(self, args):
         self.plugin.opened(args)
         if self.plugin.layout == "card":
@@ -349,7 +357,13 @@ class Panel(Gtk.ApplicationWindow):
                 self.card_holder.remove(old)
             card = self.plugin.build_card()
             if card is not None:
-                self.card_holder.append(card)
+                # A plugin may keep its card between openings; after a reload
+                # it's still in the old (destroyed) panel: take it from there.
+                parent = card.get_parent()
+                if parent is not None and parent is not self.card_holder:
+                    parent.remove(card)
+                if card.get_parent() is None:
+                    self.card_holder.append(card)
             self.present()
             return
         if not self.plugin.keep_query:

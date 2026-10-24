@@ -2,6 +2,15 @@
 
 Newest first. Releases are tags (`vX.Y.Z`).
 
+## v0.4.1 -- 2026-10-24
+
+- **Quick settings (and any card panel) came up empty after a reload.**
+  `vyom reload` (which a theme change runs) rebuilds the panels, but a
+  plugin that keeps its card, like kendra, handed back a card still inside
+  the old panel; GTK refused to move it ("gtk_box_append: assertion …
+  failed") and the new panel opened empty. A panel now lets go of its card
+  before it's destroyed, and takes the card from wherever it still is.
+
 ## v0.4.0 -- 2026-10-24
 
 - **Numbered tabs.** Every tab shows its number (1..9, 0 for the tenth), so
