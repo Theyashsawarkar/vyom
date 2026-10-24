@@ -5,6 +5,7 @@ results, an optional preview pane, and a footer of key hints.
 Keys (all panels): type to search, Up/Down (or Ctrl+J/K) move, Page
 Up/Down jump, Enter activates, Shift/Ctrl+Enter are a row's other actions
 (the plugin says which in its hints), Tab opens the next tool, Esc closes.
+A tool's tabs switch with Ctrl+H / Ctrl+L and Ctrl+1..9 in every tool.
 """
 import os
 import threading
@@ -18,6 +19,8 @@ from .plugin import Row, Section
 # keybind: Vyom/every panel | Page Up / Page Down | Jump a page of results
 # keybind: Vyom/every panel | Enter | Open or run the selected result
 # keybind: Vyom/every panel | Tab | Switch to the next Vyom tool
+# keybind: Vyom/every panel | Ctrl+H / Ctrl+L | Switch to the previous / next tab (tools with tabs)
+# keybind: Vyom/every panel | Ctrl+1..9 | Switch to that numbered tab (Ctrl+0: the tenth)
 # keybind: Vyom/every panel | Esc | Close the panel
 
 MODS = {"shift": Gdk.ModifierType.SHIFT_MASK, "ctrl": Gdk.ModifierType.CONTROL_MASK,
@@ -135,6 +138,7 @@ class Panel(Gtk.ApplicationWindow):
         self.pending = None
         self.live_id = None
         self.preview_box = None
+        self.tab_buttons = {}    # tab key -> its button (build_tabs)
 
         root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         root.add_css_class("vyom-panel")
@@ -209,10 +213,67 @@ class Panel(Gtk.ApplicationWindow):
         self.entry.set_placeholder_text(self.plugin.placeholder)
         self.entry.connect("changed", lambda *_: self.refresh_soon())
         bar.append(self.entry)
+        self.tab_box = Gtk.Box(spacing=2, valign=Gtk.Align.CENTER)
+        self.tab_box.add_css_class("tabs")
+        self.tab_buttons = {}
+        bar.append(self.tab_box)
+        self.build_tabs()
         extra = self.plugin.header_extra()
         if extra is not None:
             bar.append(extra)
         return bar
+
+    def build_tabs(self):
+        """The tool's tabs as toggle buttons (again when set_tabs() changes them)."""
+        child = self.tab_box.get_first_child()
+        while child is not None:
+            nxt = child.get_next_sibling()
+            self.tab_box.remove(child)
+            child = nxt
+        self.tab_buttons = {}
+        tabs = self.plugin.tabs if self.plugin.layout != "card" else []
+        if tabs and self.plugin.tab not in [t[0] for t in tabs]:
+            self.plugin.tab = tabs[0][0]
+        first = None
+        for i, t in enumerate(tabs):
+            key, text = t[0], t[1]
+            b = Gtk.ToggleButton(label=text)
+            b.add_css_class(self.plugin.tab_class)
+            b.set_can_focus(False)
+            n = f"Ctrl+{(i + 1) % 10}" if i < 10 else "Ctrl+H/L"
+            b.set_tooltip_text(f"{t[2]} ({n})" if len(t) > 2 and t[2] else n)
+            if first is None:
+                first = b
+            else:
+                b.set_group(first)
+            b.set_active(key == self.plugin.tab)
+            b.connect("toggled", lambda btn, k=key: btn.get_active() and self.on_tab(k))
+            self.tab_buttons[key] = b
+            self.tab_box.append(b)
+        self.tab_box.set_visible(bool(tabs))
+        if hasattr(self, "tab_hint"):
+            self.tab_hint.set_visible(bool(tabs))
+
+    def on_tab(self, key):
+        if key != self.plugin.tab:
+            self.plugin.tab = key
+            self.plugin.tab_changed(key)
+
+    def select_tab(self, key):
+        b = self.tab_buttons.get(key)
+        if b is not None and not b.get_active():
+            b.set_active(True)   # toggled -> on_tab
+
+    def step_tab(self, delta=None, index=None):
+        keys = list(self.tab_buttons)
+        if not keys:
+            return False
+        if index is None:
+            cur = keys.index(self.plugin.tab) if self.plugin.tab in keys else 0
+            index = (cur + delta) % len(keys)
+        if 0 <= index < len(keys):
+            self.select_tab(keys[index])
+        return True
 
     def build_results(self):
         self.scroll = Gtk.ScrolledWindow(hexpand=True, vexpand=True)
@@ -245,6 +306,9 @@ class Panel(Gtk.ApplicationWindow):
         foot.add_css_class("foot")
         for h in self.plugin.hints:
             foot.append(hint_label(h.keys, h.what))
+        self.tab_hint = hint_label("Ctrl+H/L", "tabs")
+        self.tab_hint.set_visible(bool(self.tab_buttons))
+        foot.append(self.tab_hint)
         self.status = label("", "status", hexpand=True, halign=Gtk.Align.END,
                             ellipsize=Pango.EllipsizeMode.END)
         foot.append(self.status)
@@ -434,6 +498,11 @@ class Panel(Gtk.ApplicationWindow):
             return True
         if self.plugin.layout == "card":
             return False
+        if self.tab_buttons and mods == {"ctrl"}:
+            if name in ("h", "l"):
+                return self.step_tab(delta=-1 if name == "h" else 1)
+            if len(name) == 1 and name.isdigit():
+                return self.step_tab(index=(int(name) - 1) % 10)
         cols = self.plugin.grid_columns if self.plugin.layout == "grid" else 1
         if keyval in (Gdk.KEY_Down,) or (name == "j" and "ctrl" in mods):
             self.move(cols)

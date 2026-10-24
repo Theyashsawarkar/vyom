@@ -2,6 +2,22 @@
 
 Newest first. Releases are tags (`vX.Y.Z`).
 
+## v0.3.0 -- 2026-10-24
+
+- **Tabs are part of the panel**, with one set of keys in every tool: a tool
+  lists `tabs = [(key, label)]` and the panel draws them in the search bar.
+  `Ctrl+H` / `Ctrl+L` switch to the previous / next tab (wrapping, vim's
+  left/right beside `Ctrl+K` / `Ctrl+J`), `Ctrl+1..9` and `Ctrl+0` pick one
+  by number, the footer shows `Ctrl+H/L tabs`, and each tab's tooltip its
+  number. Tools get `self.tab`, `tab_changed()`, `select_tab()` and
+  `set_tabs()`, and lose their own tab buttons, keys and CSS (ADR 6).
+  bhava, mudra, raga, smriti, tarang and ganit use it from their next release.
+- The README lists every panel's keys in a table.
+- Tool directories with a dot in the name are skipped: while `kosha link`
+  runs your checkout of a tool, kosha keeps the release as
+  `<name>.kosha-release` next to it, and Vyom listed both in `vyom list` and
+  loaded the release's style.css on top of the checkout's.
+
 ## v0.2.9 -- 2026-10-21
 
 - **Themes**: `[vyom] css = [...]` loads more stylesheets after everything

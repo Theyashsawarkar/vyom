@@ -37,8 +37,12 @@ def plugin_dirs():
     found, seen = [], set()
     for root in roots:
         root = os.path.expanduser(root)
+        # A tool's directory is named after its package, which has no dot:
+        # skip kosha's `<name>.kosha-release` (kept while you `kosha link`
+        # your checkout) and backups, which would load twice.
         cands = [root] if os.path.exists(os.path.join(root, "plugin.toml")) else \
-            sorted(os.path.join(root, d) for d in (os.listdir(root) if os.path.isdir(root) else []))
+            sorted(os.path.join(root, d) for d in (os.listdir(root) if os.path.isdir(root) else [])
+                   if "." not in d)
         for d in cands:
             meta = os.path.join(d, "plugin.toml")
             if os.path.exists(meta) and os.path.realpath(d) not in seen:

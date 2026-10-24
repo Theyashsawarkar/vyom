@@ -119,7 +119,20 @@ Vyom panel: `printf 'Accept\nReject\n' | vyom dmenu -p "Pair?"`.
 
 Every panel: type to search, `Up`/`Down` (or `Ctrl+K`/`Ctrl+J`) move,
 `Page Up`/`Page Down` jump, `Enter` runs, `Tab` switches to the next tool,
-`Esc` closes. Each tool adds its own keys (shown in its footer and README).
+`Esc` closes. A tool with tabs switches them the same way everywhere:
+`Ctrl+H`/`Ctrl+L` for the previous/next tab and `Ctrl+1..9` (`Ctrl+0`: the
+tenth) by number. Each tool adds its own keys (shown in its footer and README).
+
+| Key | Action |
+|---|---|
+| `Up / Down` | Move to the previous / next result |
+| `Ctrl+K / Ctrl+J` | Move to the previous / next result |
+| `Page Up / Page Down` | Jump a page of results |
+| `Enter` | Open or run the selected result |
+| `Ctrl+H / Ctrl+L` | Switch to the previous / next tab (tools with tabs) |
+| `Ctrl+1..9` | Switch to that numbered tab (Ctrl+0: the tenth) |
+| `Tab` | Switch to the next Vyom tool |
+| `Esc` | Close the panel |
 
 ## Configuration
 
@@ -166,6 +179,7 @@ from vyom import Hint, Plugin as Base, Row, Section, ui, util
 class Plugin(Base):
     preview = True                       # a preview pane on the right
     hints = [Hint("Enter", "greet")]
+    tabs = [("people", "People"), ("places", "Places")]   # optional: Ctrl+H/L, Ctrl+1..9
 
     def search(self, query):             # runs in a worker thread
         return [Section("People"), Row("World", "the usual", icon="󰞅", data="world")]
@@ -180,8 +194,9 @@ class Plugin(Base):
 
 Layouts: `"list"` (rows, sections, preview), `"grid"` (cells, like the
 emoji picker) and `"card"` (build the whole panel in `build_card()`). See
-`vyom/plugin.py` for every hook (`header_extra`, `key`, `opened`,
-`closed`, `live`, `anchor`…), `vyom/ui.py` for widgets, and any tool repo
+`vyom/plugin.py` for every hook (`tabs` with `self.tab`, `tab_changed`
+and `select_tab`; `header_extra`, `key`, `opened`, `closed`, `live`,
+`anchor`…), `vyom/ui.py` for widgets, and any tool repo
 for a worked example. Put it in `~/.local/share/vyom/plugins/hello` (or a
 directory in `$VYOM_PLUGIN_PATH`) and `vyom reload`.
 

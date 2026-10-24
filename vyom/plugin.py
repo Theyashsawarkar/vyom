@@ -68,6 +68,13 @@ class Plugin:
     debounce = 40               # ms between a keystroke and search()
     keep_query = False          # keep the typed text between openings
     hints = []                  # Hint(keys, what) for the footer
+    # Tabs (list/grid): [(key, label)] or [(key, label, tooltip)]. The panel
+    # draws them in the search bar and switches them with Ctrl+H / Ctrl+L
+    # (previous / next) and Ctrl+1..9, Ctrl+0 (by number), the same in every
+    # tool. `tab` is the current key; tab_changed() runs on a switch.
+    tabs = []
+    tab = ""
+    tab_class = "tab"           # css class of the tab buttons (bhava: glyphs)
 
     def __init__(self, vyom, conf):
         self.vyom = vyom         # the application (self.vyom.close(), .open(name))
@@ -110,6 +117,27 @@ class Plugin:
         """Any other key (e.g. "d" with ctrl for Ctrl+D). Return True when
         handled."""
         return False
+
+    # ---- tabs
+    def tab_changed(self, key):
+        """The user switched to tab `key` (self.tab is already set)."""
+        self.refresh()
+
+    def select_tab(self, key):
+        """Switch to a tab from the tool (e.g. `vyom raga video`)."""
+        if self.panel and getattr(self.panel, "tab_buttons", None):
+            self.panel.select_tab(key)
+        elif key != self.tab:
+            self.tab = key
+            self.tab_changed(key)
+
+    def set_tabs(self, tabs, current=None):
+        """Replace the tabs (mudra's depend on what it found)."""
+        self.tabs = list(tabs)
+        keys = [t[0] for t in self.tabs]
+        self.tab = current if current in keys else self.tab if self.tab in keys else (keys[0] if keys else "")
+        if self.panel:
+            self.panel.build_tabs()
 
     # ---- card
     def build_card(self):

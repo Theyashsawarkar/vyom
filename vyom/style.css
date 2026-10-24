@@ -47,6 +47,12 @@ window.vyom { background: transparent; }
 text.query, .query { font-size: 15px; color: @text; caret-color: @mauve; background: none; padding: 4px 2px; }
 .query placeholder, text.query placeholder { color: @overlay0; }
 
+/* ---- tabs (Plugin.tabs): the same in every tool ---- */
+.tabs button.tab { padding: 3px 10px; border-radius: 8px; font-size: 12px; font-weight: 500;
+  background: none; border: none; box-shadow: none; color: @overlay1; min-height: 0; }
+.tabs button.tab:checked { background: alpha(white, 0.08); color: @text; }
+.tabs button.tab:hover:not(:checked) { color: @subtext1; }
+
 /* ---- results ---- */
 .results { background: none; }
 list.list, .list { background: none; padding: 6px 8px; }
