@@ -153,6 +153,15 @@ def main():
     if lib not in os.environ.get("LD_PRELOAD", ""):
         os.environ["LD_PRELOAD"] = ":".join(p for p in (lib, os.environ.get("LD_PRELOAD")) if p)
         os.execv(sys.executable, [sys.executable, os.path.realpath(__file__), *args])
+    # Loaded now: take it back out of the environment. Otherwise every app
+    # Vyom starts inherits it, and everything those start in turn (a
+    # terminal's tmux server, every shell and hook in it): each process
+    # then loads GTK 4 (114 libraries), ~35 ms instead of ~1 ms.
+    rest = [p for p in os.environ.get("LD_PRELOAD", "").split(":") if p and p != lib]
+    if rest:
+        os.environ["LD_PRELOAD"] = ":".join(rest)
+    else:
+        os.environ.pop("LD_PRELOAD", None)
     sys.path.insert(0, ROOT)
     from vyom.app import main as app_main
     return app_main([sys.argv[0], "daemon"])

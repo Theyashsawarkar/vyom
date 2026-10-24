@@ -2,6 +2,19 @@
 
 Newest first. Releases are tags (`vX.Y.Z`).
 
+## v0.3.1 -- 2026-10-24
+
+- **Apps started from Vyom no longer inherit `LD_PRELOAD`.** `vyom daemon`
+  re-runs itself with gtk4-layer-shell preloaded (it has to load before
+  GTK), and kept it in its environment: every app, terminal and command a
+  tool launched preloaded it too, and so did everything those started (a
+  terminal's tmux server, then every shell, hook and script inside it).
+  Each such process loaded GTK 4's 114 libraries at start: ~35 ms instead
+  of ~1 ms for a plain command, an interactive zsh 0.61 s instead of 0.24 s.
+  Vyom now takes it back out once it's loaded (any other preload you had
+  stays). A tmux server or shell started before this keeps it until
+  restarted (`tmux set-environment -gu LD_PRELOAD` clears it for new panes).
+
 ## v0.3.0 -- 2026-10-24
 
 - **Tabs are part of the panel**, with one set of keys in every tool: a tool
