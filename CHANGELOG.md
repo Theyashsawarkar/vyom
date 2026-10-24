@@ -2,6 +2,21 @@
 
 Newest first. Releases are tags (`vX.Y.Z`).
 
+## v0.4.0 -- 2026-10-24
+
+- **Numbered tabs.** Every tab shows its number (1..9, 0 for the tenth), so
+  `Ctrl+<number>` goes there without counting tabs.
+- **`Ctrl+Tab` / `Ctrl+Shift+Tab`** cycle the tabs (next / previous,
+  wrapping), in every tool with tabs, alongside `Ctrl+H` / `Ctrl+L`. The
+  footer's hint says `Ctrl+Tab tabs`.
+- **`Shift+Tab`** opens the previous tool, as `Tab` opens the next one.
+- **Key caps in the theme's colours**: footers and hints (and any tool using
+  `ui.keycap_markup`) take the theme's surface and text colours from the
+  loaded stylesheets; they were Catppuccin Mocha's in every theme.
+  `vyom.panel.KEYCAP` has them for tools that draw their own.
+- Inactive tab labels are brighter (the theme's subtext, not overlay):
+  easier to read over a bright wallpaper.
+
 ## v0.3.2 -- 2026-10-24
 
 - **Logs go to the journal, with tracebacks.** `vyom` starts the daemon as

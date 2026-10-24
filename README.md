@@ -119,9 +119,9 @@ Vyom panel: `printf 'Accept\nReject\n' | vyom dmenu -p "Pair?"`.
 
 Every panel: type to search, `Up`/`Down` (or `Ctrl+K`/`Ctrl+J`) move,
 `Page Up`/`Page Down` jump, `Enter` runs, `Tab` switches to the next tool,
-`Esc` closes. A tool with tabs switches them the same way everywhere:
-`Ctrl+H`/`Ctrl+L` for the previous/next tab and `Ctrl+1..9` (`Ctrl+0`: the
-tenth) by number. Each tool adds its own keys (shown in its footer and README).
+`Esc` closes. A tool with tabs shows each tab's number and switches them
+the same way everywhere: `Ctrl+Tab`/`Ctrl+Shift+Tab` (or `Ctrl+H`/`Ctrl+L`)
+for the next/previous tab and `Ctrl+1..9` (`Ctrl+0`: the tenth) by number. Each tool adds its own keys (shown in its footer and README).
 
 | Key | Action |
 |---|---|
@@ -129,9 +129,10 @@ tenth) by number. Each tool adds its own keys (shown in its footer and README).
 | `Ctrl+K / Ctrl+J` | Move to the previous / next result |
 | `Page Up / Page Down` | Jump a page of results |
 | `Enter` | Open or run the selected result |
+| `Ctrl+Tab / Ctrl+Shift+Tab` | Switch to the next / previous tab (tools with tabs; wraps around) |
 | `Ctrl+H / Ctrl+L` | Switch to the previous / next tab (tools with tabs) |
-| `Ctrl+1..9` | Switch to that numbered tab (Ctrl+0: the tenth) |
-| `Tab` | Switch to the next Vyom tool |
+| `Ctrl+1..9` | Switch to that numbered tab (the number shown on it; Ctrl+0: the tenth) |
+| `Tab / Shift+Tab` | Switch to the next / previous Vyom tool |
 | `Esc` | Close the panel |
 
 ## Configuration

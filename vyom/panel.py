@@ -9,6 +9,7 @@ A tool's tabs switch with Ctrl+H / Ctrl+L and Ctrl+1..9 in every tool.
 """
 import logging
 import os
+import re
 import threading
 
 from gi.repository import Gdk, Gio, GLib, Gtk, Gtk4LayerShell as LayerShell, Pango
@@ -19,9 +20,10 @@ from .plugin import Row, Section
 # keybind: Vyom/every panel | Ctrl+K / Ctrl+J | Move to the previous / next result
 # keybind: Vyom/every panel | Page Up / Page Down | Jump a page of results
 # keybind: Vyom/every panel | Enter | Open or run the selected result
-# keybind: Vyom/every panel | Tab | Switch to the next Vyom tool
+# keybind: Vyom/every panel | Tab / Shift+Tab | Switch to the next / previous Vyom tool
+# keybind: Vyom/every panel | Ctrl+Tab / Ctrl+Shift+Tab | Switch to the next / previous tab (tools with tabs; wraps around)
 # keybind: Vyom/every panel | Ctrl+H / Ctrl+L | Switch to the previous / next tab (tools with tabs)
-# keybind: Vyom/every panel | Ctrl+1..9 | Switch to that numbered tab (Ctrl+0: the tenth)
+# keybind: Vyom/every panel | Ctrl+1..9 | Switch to that numbered tab (the number shown on it; Ctrl+0: the tenth)
 # keybind: Vyom/every panel | Esc | Close the panel
 
 MODS = {"shift": Gdk.ModifierType.SHIFT_MASK, "ctrl": Gdk.ModifierType.CONTROL_MASK,
@@ -57,9 +59,24 @@ def icon_widget(icon, size=18):
     return label(icon or "", "glyph")
 
 
+# Key cap colours (Pango can't read CSS colours): the theme's surface0 and
+# subtext1, set by the app from the loaded stylesheets (a theme's
+# @define-color), Catppuccin Mocha's until then.
+KEYCAP = {"bg": "#313244", "fg": "#bac2de", "dim": "#7f849c"}
+
+
+def set_keycap_colours(css_text):
+    """Takes the last @define-color of surface0 / subtext1 / overlay1 in the
+    loaded CSS (a theme loads after the defaults, so it wins)."""
+    for name, key in (("surface0", "bg"), ("subtext1", "fg"), ("overlay1", "dim")):
+        found = re.findall(rf"@define-color\s+{name}\s+(#[0-9a-fA-F]{{6}})\s*;", css_text)
+        if found:
+            KEYCAP[key] = found[-1]
+
+
 def keycap_markup(keys):
     """'Ctrl+Enter' as a key cap (Pango), for footers and hints."""
-    return ("<span background='#313244' foreground='#bac2de' font_family='JetBrainsMono Nerd Font'> "
+    return (f"<span background='{KEYCAP['bg']}' foreground='{KEYCAP['fg']}' font_family='JetBrainsMono Nerd Font'> "
             + GLib.markup_escape_text(keys) + " </span>")
 
 
@@ -238,7 +255,14 @@ class Panel(Gtk.ApplicationWindow):
         first = None
         for i, t in enumerate(tabs):
             key, text = t[0], t[1]
-            b = Gtk.ToggleButton(label=text)
+            # Its number on it (1..9, 0 for the tenth): Ctrl+<number> goes
+            # there, without counting tabs.
+            b = Gtk.ToggleButton()
+            inner = Gtk.Box(spacing=5)
+            if i < 10:
+                inner.append(label(str((i + 1) % 10), "tab-num", valign=Gtk.Align.CENTER))
+            inner.append(label(text))
+            b.set_child(inner)
             b.add_css_class(self.plugin.tab_class)
             b.set_can_focus(False)
             n = f"Ctrl+{(i + 1) % 10}" if i < 10 else "Ctrl+H/L"
@@ -307,7 +331,7 @@ class Panel(Gtk.ApplicationWindow):
         foot.add_css_class("foot")
         for h in self.plugin.hints:
             foot.append(hint_label(h.keys, h.what))
-        self.tab_hint = hint_label("Ctrl+H/L", "tabs")
+        self.tab_hint = hint_label("Ctrl+Tab", "tabs")
         self.tab_hint.set_visible(bool(self.tab_buttons))
         foot.append(self.tab_hint)
         self.status = label("", "status", hexpand=True, halign=Gtk.Align.END,
@@ -500,6 +524,11 @@ class Panel(Gtk.ApplicationWindow):
             return True
         if self.plugin.layout == "card":
             return False
+        # Ctrl+Tab / Ctrl+Shift+Tab cycle the tabs (Shift+Tab can arrive as
+        # ISO_Left_Tab, with or without the shift flag).
+        if self.tab_buttons and "ctrl" in mods and name in ("Tab", "ISO_Left_Tab"):
+            back = name == "ISO_Left_Tab" or "shift" in mods
+            return self.step_tab(delta=-1 if back else 1)
         if self.tab_buttons and mods == {"ctrl"}:
             if name in ("h", "l"):
                 return self.step_tab(delta=-1 if name == "h" else 1)
@@ -520,6 +549,9 @@ class Panel(Gtk.ApplicationWindow):
             self.activate(self.sel, mods)
         elif keyval == Gdk.KEY_Tab and not mods:
             self.app.open_next(self.plugin.name)
+        elif (keyval == Gdk.KEY_ISO_Left_Tab and mods <= {"shift"}) or (keyval == Gdk.KEY_Tab and mods == {"shift"}):
+            # Shift+Tab arrives as ISO_Left_Tab, or as Tab with Shift (wtype, some layouts)
+            self.app.open_next(self.plugin.name, -1)
         else:
             return False
         return True

@@ -24,7 +24,7 @@ from gi.repository import Gdk, Gio, GLib, Gtk  # noqa: E402
 
 from . import VERSION, config, util  # noqa: E402
 from . import log as vlog  # noqa: E402
-from .panel import Panel  # noqa: E402
+from .panel import Panel, set_keycap_colours  # noqa: E402
 from .plugin import Hint, Plugin, Row  # noqa: E402
 
 log = logging.getLogger("vyom")
@@ -167,6 +167,7 @@ class Vyom(Gtk.Application):
             if os.path.exists(p):
                 css.append(open(p).read())
         self.css.load_from_string("\n".join(css))
+        set_keycap_colours("\n".join(css))   # key caps in the theme's colours too
         Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), self.css,
                                                   Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 
@@ -253,13 +254,14 @@ class Vyom(Gtk.Application):
         for p in self.panels.values():
             p.hide_panel()
 
-    def open_next(self, current):
+    def open_next(self, current, step=1):
+        """The next tool in [vyom] cycle (Tab), or the previous (step=-1, Shift+Tab)."""
         cycle = self.conf.get("vyom", {}).get("cycle") or [
             n for n in self.order if self.plugins[n].layout in ("list", "grid")]
         cycle = [n for n in cycle if n in self.plugins]
         if not cycle:
             return
-        i = cycle.index(current) + 1 if current in cycle else 0
+        i = cycle.index(current) + step if current in cycle else 0
         self.open(cycle[i % len(cycle)], [])
 
     def on_reload(self, *_):
