@@ -3,7 +3,7 @@
 The runtime for Vayu's panels (the wofi replacement). Python + GTK 4 +
 gtk4-layer-shell. Its own repo, pulled into Vayu (github.com/Theyashsawarkar/vayu,
 whose CLAUDE.md "Plugins" rules apply). Each tool (dvara, ganit, smriti,
-bhava, tarang, setu, doot, patra, suchana, raga, mudra, urja, vishram,
+bhava, tarang, setu, doot, patra, akashvani, raga, mudra, urja, vishram,
 kendra) is a separate repo: never put a tool's code here. Vyom must work
 on any layer-shell compositor without Vayu.
 
