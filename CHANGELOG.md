@@ -2,6 +2,12 @@
 
 Newest first. Releases are tags (`vX.Y.Z`).
 
+## v0.4.2 -- 2026-11-02
+
+- **Tools could silently lose what lives in `~/.local/bin`.** A user service's
+  PATH often lacks it, so a tool that looks there found nothing: mudra showed
+  only Sway's keys. Vyom now adds it to its own PATH when it starts.
+
 ## v0.4.1 -- 2026-10-24
 
 - **Quick settings (and any card panel) came up empty after a reload.**

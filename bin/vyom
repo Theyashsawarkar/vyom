@@ -24,6 +24,12 @@ import sys
 import tempfile
 import time
 
+# Tools and their helpers live in ~/.local/bin, which a user service's PATH
+# often lacks: without it a tool silently can't find what it needs.
+_local_bin = os.path.expanduser("~/.local/bin")
+if os.path.isdir(_local_bin) and _local_bin not in os.environ.get("PATH", "").split(":"):
+    os.environ["PATH"] = _local_bin + ":" + os.environ.get("PATH", "")
+
 APP_ID, OBJ = "dev.vayu.Vyom", "/dev/vayu/Vyom"
 ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 RUNTIME = os.path.join(os.environ.get("XDG_RUNTIME_DIR") or tempfile.gettempdir(), "vyom")
