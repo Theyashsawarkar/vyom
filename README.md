@@ -6,6 +6,15 @@
   </picture>
 </p>
 
+<!-- identity -->
+<p align="center">
+  <b>यथाकाशस्थितो नित्यं वायुः सर्वत्रगो महान् ।<br>
+  तथा सर्वाणि भूतानि मत्स्थानीत्युपधारय ॥</b><br>
+  <i>As the great wind, moving everywhere, always rests in the sky, so all things rest in me.</i><br>
+  <sub>Bhagavad Gītā 9.6</sub>
+</p>
+<!-- /identity -->
+
 <p align="center">
   <b>Beautiful, keyboard-driven panels for wlroots desktops (sway, Hyprland, river…).</b><br>
   The runtime behind <a href="https://github.com/Theyashsawarkar/vayu">Vayu</a>'s launcher and system panels; works on its own.
