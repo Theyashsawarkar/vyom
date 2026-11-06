@@ -254,16 +254,6 @@ class Vyom(Gtk.Application):
         for p in self.panels.values():
             p.hide_panel()
 
-    def open_next(self, current, step=1):
-        """The next tool in [vyom] cycle (Tab), or the previous (step=-1, Shift+Tab)."""
-        cycle = self.conf.get("vyom", {}).get("cycle") or [
-            n for n in self.order if self.plugins[n].layout in ("list", "grid")]
-        cycle = [n for n in cycle if n in self.plugins]
-        if not cycle:
-            return
-        i = cycle.index(current) + step if current in cycle else 0
-        self.open(cycle[i % len(cycle)], [])
-
     def on_reload(self, *_):
         """Re-reads config.toml and the CSS; panels rebuild."""
         self.close_all()

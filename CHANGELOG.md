@@ -2,8 +2,15 @@
 
 Newest first. Releases are tags (`vX.Y.Z`).
 
-## Unreleased
+## v0.5.0 -- 2026-11-06
 
+- **F11 makes any tool fullscreen**, and again back; each tool remembers it for next time. A small gap is left at the screen's edges, so the corners stay round.
+- **Tab switches a tool's own tabs**, its main kinds (ganit's Calculate and Convert,
+  tarang's Networks and Hotspot), like Ctrl+1..9 and Ctrl+H/L, in every tool and every
+  layout. Tab no longer jumps to another Vyom tool, and `[vyom] cycle` is gone. In a
+  tool without tabs, Tab does nothing in a list and moves between controls in a card.
+- **Card tools can have tabs** (`tabs` on the plugin, `self.panel.rebuild_card()` in
+  `tab_changed`), shown at the top right like a list's; ganit 0.3.0 uses them.
 - Every corner is rounded: the website's callouts.
 - A logo and a shloka at the top of the README and the website: every Vayu tool has them now.
 

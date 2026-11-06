@@ -68,10 +68,11 @@ class Plugin:
     debounce = 40               # ms between a keystroke and search()
     keep_query = False          # keep the typed text between openings
     hints = []                  # Hint(keys, what) for the footer
-    # Tabs (list/grid): [(key, label)] or [(key, label, tooltip)]. The panel
-    # draws them in the search bar and switches them with Ctrl+H / Ctrl+L
-    # (previous / next) and Ctrl+1..9, Ctrl+0 (by number), the same in every
-    # tool. `tab` is the current key; tab_changed() runs on a switch.
+    # Tabs: [(key, label)] or [(key, label, tooltip)], a tool's main kinds. The
+    # panel draws them in the top bar (a card too) and switches them with Tab /
+    # Shift+Tab, Ctrl+H / Ctrl+L and Ctrl+1..9, Ctrl+0 (by number), the same in
+    # every tool. `tab` is the current key; tab_changed() runs on a switch (a
+    # card's: call self.panel.rebuild_card()).
     tabs = []
     tab = ""
     tab_class = "tab"           # css class of the tab buttons (bhava: glyphs)

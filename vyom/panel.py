@@ -4,8 +4,9 @@ results, an optional preview pane, and a footer of key hints.
 
 Keys (all panels): type to search, Up/Down (or Ctrl+J/K) move, Page
 Up/Down jump, Enter activates, Shift/Ctrl+Enter are a row's other actions
-(the plugin says which in its hints), Tab opens the next tool, Esc closes.
-A tool's tabs switch with Ctrl+H / Ctrl+L and Ctrl+1..9 in every tool.
+(the plugin says which in its hints), Esc closes. A tool's tabs (its main
+kinds: Calculate and Convert, Networks and Hotspot) switch with Tab /
+Shift+Tab, Ctrl+1..9 and Ctrl+H / Ctrl+L, the same in every tool.
 """
 import logging
 import os
@@ -14,17 +15,20 @@ import threading
 
 from gi.repository import Gdk, Gio, GLib, Gtk, Gtk4LayerShell as LayerShell, Pango
 
+from . import util
 from .plugin import Row, Section
 
 # keybind: Vyom/every panel | Up / Down | Move to the previous / next result
 # keybind: Vyom/every panel | Ctrl+K / Ctrl+J | Move to the previous / next result
 # keybind: Vyom/every panel | Page Up / Page Down | Jump a page of results
 # keybind: Vyom/every panel | Enter | Open or run the selected result
-# keybind: Vyom/every panel | Tab / Shift+Tab | Switch to the next / previous Vyom tool
-# keybind: Vyom/every panel | Ctrl+Tab / Ctrl+Shift+Tab | Switch to the next / previous tab (tools with tabs; wraps around)
+# keybind: Vyom/every panel | Tab / Shift+Tab | Switch to the next / previous tab (tools with tabs; wraps around)
 # keybind: Vyom/every panel | Ctrl+H / Ctrl+L | Switch to the previous / next tab (tools with tabs)
 # keybind: Vyom/every panel | Ctrl+1..9 | Switch to that numbered tab (the number shown on it; Ctrl+0: the tenth)
+# keybind: Vyom/every panel | F11 | Toggle fullscreen (each tool remembers it)
 # keybind: Vyom/every panel | Esc | Close the panel
+
+FULL_GAP = 14   # fullscreen: the gap left at each edge of the screen, in pixels
 
 MODS = {"shift": Gdk.ModifierType.SHIFT_MASK, "ctrl": Gdk.ModifierType.CONTROL_MASK,
         "alt": Gdk.ModifierType.ALT_MASK}
@@ -145,10 +149,9 @@ class Panel(Gtk.ApplicationWindow):
             anchor.append("top")
             margins["top"] = plugin.conf["top"]
         self.anchored = bool(anchor)
-        for e in anchor:
-            LayerShell.set_anchor(self, edges[e], True)
-        for e, px in margins.items():
-            LayerShell.set_margin(self, edges[e], int(px))
+        self.edges, self.home_anchor, self.home_margins = edges, anchor, margins
+        self.full = False
+        self.place()
 
         self.items = []        # selectable (Row, widget) in order
         self.sel = -1
@@ -158,7 +161,7 @@ class Panel(Gtk.ApplicationWindow):
         self.preview_box = None
         self.tab_buttons = {}    # tab key -> its button (build_tabs)
 
-        root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, vexpand=True)
         root.add_css_class("vyom-panel")
         root.add_css_class(f"plugin-{plugin.name}")
         w, h, pw = self.sizes()
@@ -166,7 +169,9 @@ class Panel(Gtk.ApplicationWindow):
         self.root = root
 
         if plugin.layout == "card":
-            self.card_holder = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+            if plugin.tabs:   # a card with tabs gets the same tab bar as every tool
+                root.append(self.build_card_top())
+            self.card_holder = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, vexpand=True)
             root.append(self.card_holder)
         else:
             root.append(self.build_top())
@@ -193,6 +198,38 @@ class Panel(Gtk.ApplicationWindow):
         keys.connect("key-pressed", self.on_key)
         self.add_controller(keys)
         self.connect("close-request", lambda *_: (self.hide_panel(), True)[1])
+
+    # ---------------------------------------------------------- fullscreen
+    def place(self):
+        """Anchors and margins: the tool's own place, or, fullscreen, every
+        edge a small gap from the screen's (the corners stay round)."""
+        for e in self.edges.values():
+            LayerShell.set_anchor(self, e, False)
+            LayerShell.set_margin(self, e, 0)
+        if self.full:
+            for e in self.edges.values():
+                LayerShell.set_anchor(self, e, True)
+                LayerShell.set_margin(self, e, FULL_GAP)
+            return
+        for e in self.home_anchor:
+            LayerShell.set_anchor(self, self.edges[e], True)
+        for e, px in self.home_margins.items():
+            LayerShell.set_margin(self, self.edges[e], int(px))
+
+    def set_full(self, on, save=True):
+        if on == self.full:
+            return
+        self.full = on
+        self.place()
+        if on:
+            self.root.add_css_class("full")
+        else:
+            self.root.remove_css_class("full")
+            self.set_default_size(1, 1)   # back to its own size
+        if save:
+            state = util.load_state("vyom-fullscreen", {})
+            state[self.plugin.name] = on
+            util.save_state("vyom-fullscreen", state)
 
     # ------------------------------------------------------------ building
     def sizes(self):
@@ -241,6 +278,38 @@ class Panel(Gtk.ApplicationWindow):
             bar.append(extra)
         return bar
 
+    def build_card_top(self):
+        """A card's top bar: its mode pill and its tabs (no search box)."""
+        bar = Gtk.Box(spacing=10)
+        bar.add_css_class("topbar")
+        pill = Gtk.Box(spacing=7)
+        pill.add_css_class("mode")
+        pill.add_css_class(f"c-{self.plugin.color}")
+        pill.append(label(self.plugin.icon, "glyph"))
+        pill.append(label(self.plugin.title, "mode-title"))
+        bar.append(pill)
+        bar.append(Gtk.Box(hexpand=True))
+        self.tab_box = Gtk.Box(spacing=2, valign=Gtk.Align.CENTER)
+        self.tab_box.add_css_class("tabs")
+        bar.append(self.tab_box)
+        self.build_tabs()
+        return bar
+
+    def rebuild_card(self):
+        """The card again from the plugin (a card's tab switched)."""
+        if self.plugin.layout != "card":
+            return
+        old = self.card_holder.get_first_child()
+        if old is not None:
+            self.card_holder.remove(old)
+        card = self.plugin.build_card()
+        if card is not None:
+            parent = card.get_parent()
+            if parent is not None and parent is not self.card_holder:
+                parent.remove(card)
+            if card.get_parent() is None:
+                self.card_holder.append(card)
+
     def build_tabs(self):
         """The tool's tabs as toggle buttons (again when set_tabs() changes them)."""
         child = self.tab_box.get_first_child()
@@ -249,7 +318,7 @@ class Panel(Gtk.ApplicationWindow):
             self.tab_box.remove(child)
             child = nxt
         self.tab_buttons = {}
-        tabs = self.plugin.tabs if self.plugin.layout != "card" else []
+        tabs = self.plugin.tabs
         if tabs and self.plugin.tab not in [t[0] for t in tabs]:
             self.plugin.tab = tabs[0][0]
         first = None
@@ -331,12 +400,13 @@ class Panel(Gtk.ApplicationWindow):
         foot.add_css_class("foot")
         for h in self.plugin.hints:
             foot.append(hint_label(h.keys, h.what))
-        self.tab_hint = hint_label("Ctrl+Tab", "tabs")
+        self.tab_hint = hint_label("Tab", "tabs")
         self.tab_hint.set_visible(bool(self.tab_buttons))
         foot.append(self.tab_hint)
         self.status = label("", "status", hexpand=True, halign=Gtk.Align.END,
                             ellipsize=Pango.EllipsizeMode.END)
         foot.append(self.status)
+        foot.append(hint_label("F11", "fullscreen"))
         foot.append(hint_label("Esc", "close"))
         return foot
 
@@ -350,6 +420,7 @@ class Panel(Gtk.ApplicationWindow):
             holder.remove(child)
 
     def show_panel(self, args):
+        self.set_full(bool(util.load_state("vyom-fullscreen", {}).get(self.plugin.name)), save=False)
         self.plugin.opened(args)
         if self.plugin.layout == "card":
             old = self.card_holder.get_first_child()
@@ -536,18 +607,23 @@ class Panel(Gtk.ApplicationWindow):
         if keyval == Gdk.KEY_Escape:
             self.app.close_all()
             return True
+        if keyval == Gdk.KEY_F11 and not mods:
+            self.set_full(not self.full)
+            return True
+        # A tool's tabs, in every layout: Tab / Shift+Tab (Shift+Tab can arrive
+        # as ISO_Left_Tab, with or without the shift flag), Ctrl+H / Ctrl+L and
+        # Ctrl+1..9. A card without tabs keeps Tab for moving between its controls.
+        if self.tab_buttons:
+            if name in ("Tab", "ISO_Left_Tab") and mods <= {"shift", "ctrl"}:
+                back = name == "ISO_Left_Tab" or "shift" in mods
+                return self.step_tab(delta=-1 if back else 1)
+            if mods == {"ctrl"}:
+                if name in ("h", "l"):
+                    return self.step_tab(delta=-1 if name == "h" else 1)
+                if len(name) == 1 and name.isdigit():
+                    return self.step_tab(index=(int(name) - 1) % 10)
         if self.plugin.layout == "card":
             return False
-        # Ctrl+Tab / Ctrl+Shift+Tab cycle the tabs (Shift+Tab can arrive as
-        # ISO_Left_Tab, with or without the shift flag).
-        if self.tab_buttons and "ctrl" in mods and name in ("Tab", "ISO_Left_Tab"):
-            back = name == "ISO_Left_Tab" or "shift" in mods
-            return self.step_tab(delta=-1 if back else 1)
-        if self.tab_buttons and mods == {"ctrl"}:
-            if name in ("h", "l"):
-                return self.step_tab(delta=-1 if name == "h" else 1)
-            if len(name) == 1 and name.isdigit():
-                return self.step_tab(index=(int(name) - 1) % 10)
         cols = self.plugin.grid_columns if self.plugin.layout == "grid" else 1
         if keyval in (Gdk.KEY_Down,) or (name == "j" and "ctrl" in mods):
             self.move(cols)
@@ -561,11 +637,8 @@ class Panel(Gtk.ApplicationWindow):
             self.move(-8 * cols)
         elif keyval in (Gdk.KEY_Return, Gdk.KEY_KP_Enter):
             self.activate(self.sel, mods)
-        elif keyval == Gdk.KEY_Tab and not mods:
-            self.app.open_next(self.plugin.name)
-        elif (keyval == Gdk.KEY_ISO_Left_Tab and mods <= {"shift"}) or (keyval == Gdk.KEY_Tab and mods == {"shift"}):
-            # Shift+Tab arrives as ISO_Left_Tab, or as Tab with Shift (wtype, some layouts)
-            self.app.open_next(self.plugin.name, -1)
+        elif keyval in (Gdk.KEY_Tab, Gdk.KEY_ISO_Left_Tab):
+            pass   # no tabs here: Tab does nothing (it doesn't leave the search box)
         else:
             return False
         return True

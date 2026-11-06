@@ -3,8 +3,6 @@
 [vyom]
 # Installed tools not to load:
 # disabled = ["raga"]
-# Tab order between tools (default: every list/grid tool, as found):
-# cycle = ["dvara", "ganit", "smriti", "bhava"]
 # Every panel opens at this one size, so switching tools never jumps
 # (kendra, anchored under the bar, keeps its own); times scale, capped
 # at 90% of the screen:
