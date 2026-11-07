@@ -2,6 +2,12 @@
 
 Newest first. Releases are tags (`vX.Y.Z`).
 
+## v0.6.1 -- 2026-11-07
+
+- Sliders and progress bars no longer log "GtkGizmo reported min width -2" (GTK's -1px
+  margin, left over once their border is gone).
+- Row titles keep the text colour without a theme (they could render black).
+
 ## v0.6.0 -- 2026-11-07
 
 - **One look for every tool.** The selected row has a 2px accent frame and a bar on its

@@ -69,7 +69,7 @@ list.list, .list { background: none; padding: 6px 8px; }
 .list row.section-row { margin-top: 6px; }
 .row { padding: 9px 12px; min-height: 38px; }
 .row.dim { opacity: 0.55; }
-.row-title { font-weight: 600; font-size: 14px; }
+.row-title { font-weight: 600; font-size: 14px; color: @text; }
 .row-sub { color: @subtext0; font-size: 12.5px; }
 .row-meta { color: @overlay1; font-size: 12px; font-family: "JetBrainsMono Nerd Font"; }
 .section { padding: 10px 10px 4px 10px; }
@@ -194,12 +194,12 @@ switch slider { border-radius: 999px; background: @crust; min-width: 16px; min-h
 .card-sub { color: @overlay1; font-size: 12.5px; }
 .big-number { font-size: 34px; font-weight: 700; }
 progressbar trough { min-height: 6px; border-radius: 6px; background: alpha(white, 0.1); }
-progressbar progress { min-height: 6px; border-radius: 6px; background: @mauve; }
+progressbar progress { min-height: 6px; border-radius: 6px; background: @mauve; margin: 0; }
 progressbar.m-green progress { background: @green; } progressbar.m-yellow progress { background: @yellow; }
 progressbar.m-red progress { background: @red; } progressbar.m-teal progress { background: @teal; }
 progressbar.m-blue progress { background: @blue; } progressbar.m-peach progress { background: @peach; }
 progressbar.m-sky progress { background: @sky; }
 scale trough { min-height: 6px; border-radius: 6px; background: alpha(white, 0.10); border: none; }
-scale highlight { border-radius: 6px; background: @mauve; border: none; }
+scale highlight { border-radius: 6px; background: @mauve; border: none; margin: 0; }
 scale slider { min-width: 16px; min-height: 16px; margin: -6px 0; border-radius: 8px; background: @text;
                border: none; box-shadow: 0 0 0 3px alpha(@accent, 0.25); }
