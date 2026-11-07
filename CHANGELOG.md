@@ -2,6 +2,19 @@
 
 Newest first. Releases are tags (`vX.Y.Z`).
 
+## v0.6.0 -- 2026-11-07
+
+- **One look for every tool.** The selected row has a 2px accent frame and a bar on its
+  left edge, easy to see even on a dim screen; rows are taller with larger text; chips
+  have an outline in their colour; the current tab is underlined in the accent.
+- **A status strip** (`build_strip()`) above a tool's list: what's connected, what's
+  playing, what needs you, before you read the list.
+- **Rows can carry coloured chips and signal bars with a word** (`chips`, `level`,
+  `level_text`, `level_color`); sections can show a count and a note.
+- **Shared building blocks** in `vyom.ui`: `hero`, `ring`, `bars`, `meter`, `steps`,
+  `notice`, `segmented`, `section`, `soft`, `chips`, `keycap`, and buttons that show their
+  key. Drawn widgets take the theme's colours. ADR 0007.
+
 ## v0.5.0 -- 2026-11-06
 
 - **F11 makes any tool fullscreen**, and again back; each tool remembers it for next time. A small gap is left at the screen's edges, so the corners stay round.

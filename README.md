@@ -204,7 +204,12 @@ class Plugin(Base):
 ```
 
 Layouts: `"list"` (rows, sections, preview), `"grid"` (cells, like the
-emoji picker) and `"card"` (build the whole panel in `build_card()`). See
+emoji picker) and `"card"` (build the whole panel in `build_card()`). A list
+can show a status strip above its rows (`build_strip()`: what's connected,
+what needs you), and a `Row` can carry coloured `chips` and signal bars
+(`level`, `level_text`, `level_color`). `vyom.ui` has the shared pieces:
+`hero`, `ring`, `bars`, `meter`, `steps`, `notice`, `segmented`, and buttons
+that show their key (`ui.button("Forget", forget, "danger", key="Ctrl+F")`). See
 `vyom/plugin.py` for every hook (`tabs` with `self.tab`, `tab_changed`
 and `select_tab`; `header_extra`, `key`, `opened`, `closed`, `live`,
 `anchor`…), `vyom/ui.py` for widgets, and any tool repo

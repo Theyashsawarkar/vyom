@@ -124,6 +124,19 @@ def row_widget(row):
         text.append(label(row.subtitle, "row-sub", markup=row.markup, xalign=0,
                           ellipsize=Pango.EllipsizeMode.END))
     box.append(text)
+    for c in row.chips or ():
+        text_, color = (c, "gray") if isinstance(c, str) else (c[0], c[1])
+        ch = label(text_, "chip", f"c-{color}", valign=Gtk.Align.CENTER)
+        box.append(ch)
+    if row.level >= 0:
+        from .ui import bars
+        lv = Gtk.Box(spacing=7, valign=Gtk.Align.CENTER)
+        lv.add_css_class("level")
+        lv.add_css_class(f"c-{row.level_color or 'gray'}")
+        lv.append(bars(row.level, row.level_color or "gray"))
+        if row.level_text:
+            lv.append(label(row.level_text, "level-text"))
+        box.append(lv)
     if row.meta:
         box.append(label(row.meta, "row-meta", markup=row.markup, valign=Gtk.Align.CENTER))
     return box
@@ -159,6 +172,7 @@ class Panel(Gtk.ApplicationWindow):
         self.pending = None
         self.live_id = None
         self.preview_box = None
+        self.strip_holder = None
         self.tab_buttons = {}    # tab key -> its button (build_tabs)
 
         root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, vexpand=True)
@@ -177,7 +191,13 @@ class Panel(Gtk.ApplicationWindow):
             root.append(self.build_top())
             body = Gtk.Box(vexpand=True)
             body.set_size_request(-1, max(200, h - 110))  # minus the bar and footer
-            body.append(self.build_results())
+            # The list column: the tool's status strip (build_strip) over the results.
+            column = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True)
+            self.strip_holder = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+            self.strip_holder.add_css_class("strip-holder")
+            column.append(self.strip_holder)
+            column.append(self.build_results())
+            body.append(column)
             if plugin.preview:
                 # A fixed-width column: wrapped text in it must not grow it.
                 pscroll = Gtk.ScrolledWindow(hexpand=False)
@@ -504,7 +524,13 @@ class Panel(Gtk.ApplicationWindow):
             if isinstance(r, Section):
                 if self.plugin.layout == "grid":
                     continue
-                w = label(r.title.upper(), "section", xalign=0)
+                w = Gtk.Box(spacing=8)
+                w.add_css_class("section")
+                w.append(label(r.title.upper(), "section-title", xalign=0))
+                if r.count != "":
+                    w.append(label(str(r.count), "section-count"))
+                if r.note:
+                    w.append(label(r.note, "section-note", hexpand=True, xalign=1))
                 lr = Gtk.ListBoxRow(selectable=False, activatable=False)
                 lr.set_child(w)
                 lr.add_css_class("section-row")
@@ -521,6 +547,7 @@ class Panel(Gtk.ApplicationWindow):
                 self.list.append(w)
             self.items.append((r, w))
         self.empty.set_label("" if self.items else getattr(self.plugin, "empty_text", "Nothing found"))
+        self.refresh_strip()
         idx = 0
         if keep is not None:
             idx = next((i for i, (r, _) in enumerate(self.items)
@@ -585,6 +612,20 @@ class Panel(Gtk.ApplicationWindow):
         w = self.plugin.build_preview(row) if row is not None else None
         if w is not None:
             self.preview_box.append(w)
+
+    def refresh_strip(self):
+        """The tool's status strip again (Plugin.build_strip), above the list."""
+        if self.strip_holder is None:
+            return
+        old = self.strip_holder.get_first_child()
+        while old is not None:
+            nxt = old.get_next_sibling()
+            self.strip_holder.remove(old)
+            old = nxt
+        w = self.plugin.build_strip()
+        self.strip_holder.set_visible(w is not None)
+        if w is not None:
+            self.strip_holder.append(w)
 
     def update_preview_soon(self):
         GLib.idle_add(lambda: (self.update_preview(), False)[1])

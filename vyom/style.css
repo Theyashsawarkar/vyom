@@ -10,6 +10,7 @@
 @define-color surface1 #45475a;
 @define-color overlay0 #6c7086;
 @define-color overlay1 #7f849c;
+@define-color overlay2 #9399b2;
 @define-color subtext0 #a6adc8;
 @define-color subtext1 #bac2de;
 @define-color text #cdd6f4;
@@ -50,7 +51,7 @@ text.query, .query { font-size: 15px; color: @text; caret-color: @mauve; backgro
 /* ---- tabs (Plugin.tabs): the same in every tool ---- */
 .tabs button.tab { padding: 3px 10px; border-radius: 8px; font-size: 12px; font-weight: 500;
   background: none; border: none; box-shadow: none; color: @subtext0; min-height: 0; }
-.tabs button.tab:checked { background: alpha(white, 0.08); color: @text; }
+.tabs button.tab:checked { background: alpha(white, 0.08); color: @text; box-shadow: inset 0 -2px 0 @accent; }
 .tabs button.tab:hover:not(:checked) { color: @subtext1; }
 /* The tab's number (Ctrl+<number> goes there): small and quiet. */
 .tabs .tab-num { font-family: "JetBrainsMono Nerd Font"; font-size: 10px; opacity: 0.55; }
@@ -59,20 +60,28 @@ text.query, .query { font-size: 15px; color: @text; caret-color: @mauve; backgro
 /* ---- results ---- */
 .results { background: none; }
 list.list, .list { background: none; padding: 6px 8px; }
-.list row { padding: 0; border-radius: 12px; background: none; margin: 1px 0; outline: none; }
-.list row:selected { background: alpha(@accent, 0.14); box-shadow: inset 0 0 0 1px alpha(@accent, 0.22); }
+.list row { padding: 0; border-radius: 13px; background: none; margin: 2px 0; outline: none; }
+/* Where you are, at a glance even on a dim screen: an accent frame, a tint
+   and a bar on the left edge. */
+.list row:selected { background: alpha(@accent, 0.10);
+  box-shadow: inset 4px 0 0 @accent, inset 0 0 0 2px alpha(@accent, 0.75); }
 .list row:hover:not(:selected) { background: alpha(white, 0.04); }
 .list row.section-row { margin-top: 6px; }
-.row { padding: 7px 9px; }
+.row { padding: 9px 12px; min-height: 38px; }
 .row.dim { opacity: 0.55; }
-.row-title { font-weight: 600; font-size: 13.5px; }
-.row-sub { color: @overlay1; font-size: 12px; }
-.row-meta { color: @overlay1; font-size: 11.5px; font-family: "JetBrainsMono Nerd Font"; }
-.section { color: @overlay0; font-size: 10.5px; font-weight: 700; letter-spacing: 1px; padding: 8px 10px 3px 10px; }
+.row-title { font-weight: 600; font-size: 14px; }
+.row-sub { color: @subtext0; font-size: 12.5px; }
+.row-meta { color: @overlay1; font-size: 12px; font-family: "JetBrainsMono Nerd Font"; }
+.section { padding: 10px 10px 4px 10px; }
+.section-title { color: @overlay1; font-size: 11px; font-weight: 700; letter-spacing: 1px; }
+.section-count { color: @overlay0; font-size: 11px; font-weight: 600; font-family: "JetBrainsMono Nerd Font"; }
+.section-note { color: @overlay0; font-size: 11.5px; }
+.level { background: none; }
+.level-text { font-size: 12.5px; font-weight: 600; min-width: 64px; }
 .empty { color: @overlay0; font-size: 13px; }
 
-.tile { min-width: 34px; min-height: 34px; border-radius: 10px; background: alpha(white, 0.06); }
-.tile .glyph { font-size: 17px; }
+.tile { min-width: 38px; min-height: 38px; border-radius: 12px; background: alpha(white, 0.06); }
+.tile .glyph { font-size: 18px; }
 .tile.big { min-width: 54px; min-height: 54px; border-radius: 15px; }
 .tile.big .glyph { font-size: 26px; }
 
@@ -120,7 +129,55 @@ button.btn.primary { background: @mauve; color: @crust; border-color: transparen
 button.btn.primary:hover { background: @lavender; }
 button.btn.danger { background: alpha(@red, 0.16); color: @red; border-color: alpha(@red, 0.3); }
 button.btn.ok { background: @green; color: @crust; border-color: transparent; }
-.chip { font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: 999px; }
+.chip { font-size: 11.5px; font-weight: 600; padding: 2px 9px; border-radius: 9px;
+  border: 1px solid alpha(currentColor, 0.4); }
+.chip.c-gray { border-color: alpha(white, 0.1); }
+.chip-icon { font-size: 12.5px; }
+flowbox.chips flowboxchild { padding: 0; background: none; }
+.keycap { font-family: "JetBrainsMono Nerd Font"; font-size: 10.5px; font-weight: 600; padding: 0 6px;
+  border-radius: 6px; background: alpha(@crust, 0.35); border: 1px solid alpha(white, 0.1); }
+button.btn.primary .keycap, button.btn.ok .keycap { background: alpha(@crust, 0.18); border-color: alpha(@crust, 0.2); }
+
+/* ---- the status strip (Plugin.build_strip) and its building blocks ---- */
+.strip-holder { padding: 10px 12px 0 12px; }
+.hero { border-radius: 16px; padding: 12px 16px; border: 1px solid alpha(white, 0.08); background: alpha(white, 0.03); }
+.hero.h-green { border-color: alpha(@green, 0.4); background: alpha(@green, 0.06); }
+.hero.h-teal { border-color: alpha(@teal, 0.4); background: alpha(@teal, 0.07); }
+.hero.h-blue { border-color: alpha(@blue, 0.4); background: alpha(@blue, 0.07); }
+.hero.h-yellow { border-color: alpha(@yellow, 0.45); background: alpha(@yellow, 0.06); }
+.hero.h-red { border-color: alpha(@red, 0.45); background: alpha(@red, 0.07); }
+.hero.h-peach { border-color: alpha(@peach, 0.45); background: alpha(@peach, 0.06); }
+.hero.h-mauve { border-color: alpha(@mauve, 0.45); background: alpha(@mauve, 0.07); }
+.hero.h-gray { }
+.hero-title { font-size: 16px; font-weight: 700; }
+.hero-sub { color: @subtext0; font-size: 12.5px; }
+.ring-text { font-weight: 800; font-size: 15px; }
+.soft { border-radius: 14px; padding: 12px 14px; background: alpha(white, 0.035); border: 1px solid alpha(white, 0.06); }
+.meter-name { color: @overlay1; font-size: 12.5px; }
+.meter-value { font-weight: 700; font-size: 12.5px; }
+.steps { }
+.step { font-size: 11.5px; padding: 2px 9px; border-radius: 999px; border: 1px solid alpha(white, 0.1); color: @overlay1; }
+.step-done { color: @green; border-color: alpha(@green, 0.4); }
+.step-now { color: @yellow; border-color: alpha(@yellow, 0.5); }
+.notice { border-radius: 14px; padding: 10px 12px; border: 1px solid alpha(white, 0.1); }
+.notice-icon { font-size: 17px; }
+.notice-title { font-weight: 700; font-size: 13px; }
+.notice-text { color: @subtext0; font-size: 12.5px; }
+.notice.n-red { border-color: alpha(@red, 0.5); background: alpha(@red, 0.08); }
+.notice.n-red .notice-icon, .notice.n-red .notice-title { color: @red; }
+.notice.n-yellow { border-color: alpha(@yellow, 0.5); background: alpha(@yellow, 0.07); }
+.notice.n-yellow .notice-icon, .notice.n-yellow .notice-title { color: @yellow; }
+.notice.n-green { border-color: alpha(@green, 0.5); background: alpha(@green, 0.07); }
+.notice.n-green .notice-icon, .notice.n-green .notice-title { color: @green; }
+.segmented { border-radius: 12px; padding: 3px; background: alpha(white, 0.05); border: 1px solid alpha(white, 0.07); }
+.segmented button.seg { border-radius: 9px; padding: 5px 10px; background: none; border: none; box-shadow: none;
+  color: @overlay2; font-weight: 600; font-size: 12.5px; min-height: 0; }
+.segmented button.seg.seg-on { background: @accent; color: @crust; }
+/* text colours that mean something (drawn widgets take theirs from these) */
+.t-green { color: @green; } .t-yellow { color: @yellow; } .t-red { color: @red; } .t-peach { color: @peach; }
+.t-teal { color: @teal; } .t-blue { color: @blue; } .t-sky { color: @sky; } .t-mauve { color: @mauve; }
+.t-pink { color: @pink; } .t-lavender { color: @lavender; } .t-gray { color: @overlay1; } .t-accent { color: @accent; }
+.level.c-green, .level.c-yellow, .level.c-red, .level.c-gray, .level.c-teal { background: none; }
 switch { border-radius: 999px; background: @surface1; min-height: 20px; }
 switch:checked { background: @green; }
 switch slider { border-radius: 999px; background: @crust; min-width: 16px; min-height: 16px; margin: 2px; }
@@ -138,6 +195,10 @@ switch slider { border-radius: 999px; background: @crust; min-width: 16px; min-h
 .big-number { font-size: 34px; font-weight: 700; }
 progressbar trough { min-height: 6px; border-radius: 6px; background: alpha(white, 0.1); }
 progressbar progress { min-height: 6px; border-radius: 6px; background: @mauve; }
+progressbar.m-green progress { background: @green; } progressbar.m-yellow progress { background: @yellow; }
+progressbar.m-red progress { background: @red; } progressbar.m-teal progress { background: @teal; }
+progressbar.m-blue progress { background: @blue; } progressbar.m-peach progress { background: @peach; }
+progressbar.m-sky progress { background: @sky; }
 scale trough { min-height: 6px; border-radius: 6px; background: alpha(white, 0.10); border: none; }
 scale highlight { border-radius: 6px; background: @mauve; border: none; }
 scale slider { min-width: 16px; min-height: 16px; margin: -6px 0; border-radius: 8px; background: @text;

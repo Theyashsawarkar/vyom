@@ -37,11 +37,17 @@ class Row:
     dim: bool = False           # greyed out (e.g. a stopped container)
     badge: str = ""             # a small colored chip after the title
     badge_color: str = ""
+    chips: Any = None           # [(text, color)] or [text]: chips at the right ("Open", "5 GHz")
+    level: int = -1             # 0..4 signal bars at the right (-1: none)
+    level_text: str = ""        # the level in a word ("Good"), next to the bars
+    level_color: str = ""       # green / yellow / red: what the level means
 
 
 @dataclass
 class Section:
     title: str
+    count: Any = ""             # shown quietly after the title ("Saved 2")
+    note: str = ""              # right-aligned ("strongest first", "Enter connects")
 
 
 @dataclass
@@ -108,6 +114,12 @@ class Plugin:
 
     def build_preview(self, row):
         """A widget for the preview pane (main thread), or None."""
+        return None
+
+    def build_strip(self):
+        """The status strip above the list (main thread), or None: what's
+        going on before the list (tarang: the network you're on). Rebuilt
+        after every search, or now with self.panel.refresh_strip()."""
         return None
 
     def header_extra(self):
