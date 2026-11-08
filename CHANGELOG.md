@@ -2,6 +2,11 @@
 
 Newest first. Releases are tags (`vX.Y.Z`).
 
+## v0.6.3 -- 2026-11-08
+
+- **Tabs show just their name**, no number before it. `Ctrl+1..9` still switches to the
+  first to the ninth, and each tab's tooltip says which key it is.
+
 ## v0.6.2 -- 2026-11-08
 
 - **The footer's keys can follow the tab** (or a mode): a tool returns them from

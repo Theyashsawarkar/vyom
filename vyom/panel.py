@@ -24,7 +24,7 @@ from .plugin import Row, Section
 # keybind: Vyom/every panel | Enter | Open or run the selected result
 # keybind: Vyom/every panel | Tab / Shift+Tab | Switch to the next / previous tab (tools with tabs; wraps around)
 # keybind: Vyom/every panel | Ctrl+H / Ctrl+L | Switch to the previous / next tab (tools with tabs)
-# keybind: Vyom/every panel | Ctrl+1..9 | Switch to that numbered tab (the number shown on it; Ctrl+0: the tenth)
+# keybind: Vyom/every panel | Ctrl+1..9 | Switch to the first..ninth tab (Ctrl+0: the tenth; its tooltip says which)
 # keybind: Vyom/every panel | F11 | Toggle fullscreen (each tool remembers it)
 # keybind: Vyom/every panel | Esc | Close the panel
 
@@ -344,14 +344,10 @@ class Panel(Gtk.ApplicationWindow):
         first = None
         for i, t in enumerate(tabs):
             key, text = t[0], t[1]
-            # Its number on it (1..9, 0 for the tenth): Ctrl+<number> goes
-            # there, without counting tabs.
+            # Just its name: Ctrl+<its place> (1..9, 0 for the tenth) goes
+            # there, and the tooltip says which.
             b = Gtk.ToggleButton()
-            inner = Gtk.Box(spacing=5)
-            if i < 10:
-                inner.append(label(str((i + 1) % 10), "tab-num", valign=Gtk.Align.CENTER))
-            inner.append(label(text))
-            b.set_child(inner)
+            b.set_child(label(text))
             b.add_css_class(self.plugin.tab_class)
             b.set_can_focus(False)
             n = f"Ctrl+{(i + 1) % 10}" if i < 10 else "Ctrl+H/L"

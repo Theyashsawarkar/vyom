@@ -54,8 +54,6 @@ text.query, .query { font-size: 15px; color: @text; caret-color: @mauve; backgro
 .tabs button.tab:checked { background: alpha(white, 0.08); color: @text; box-shadow: inset 0 -2px 0 @accent; }
 .tabs button.tab:hover:not(:checked) { color: @subtext1; }
 /* The tab's number (Ctrl+<number> goes there): small and quiet. */
-.tabs .tab-num { font-family: "JetBrainsMono Nerd Font"; font-size: 10px; opacity: 0.55; }
-.tabs button:checked .tab-num { opacity: 0.8; }
 
 /* ---- results ---- */
 .results { background: none; }

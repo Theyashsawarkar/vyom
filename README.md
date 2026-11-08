@@ -142,7 +142,7 @@ leaves it for another tool. Each tool adds its own keys (shown in its footer and
 | `Enter` | Open or run the selected result |
 | `Tab / Shift+Tab` | Switch to the next / previous tab (tools with tabs; wraps around) |
 | `Ctrl+H / Ctrl+L` | Switch to the previous / next tab (tools with tabs) |
-| `Ctrl+1..9` | Switch to that numbered tab (the number shown on it; Ctrl+0: the tenth) |
+| `Ctrl+1..9` | Switch to the first..ninth tab (Ctrl+0: the tenth; its tooltip says which) |
 | `F11` | Toggle fullscreen (each tool remembers it) |
 | `Esc` | Close the panel |
 
