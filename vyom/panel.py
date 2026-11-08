@@ -372,6 +372,7 @@ class Panel(Gtk.ApplicationWindow):
         if key != self.plugin.tab:
             self.plugin.tab = key
             self.plugin.tab_changed(key)
+            self.refresh_hints()
 
     def select_tab(self, key):
         b = self.tab_buttons.get(key)
@@ -418,8 +419,9 @@ class Panel(Gtk.ApplicationWindow):
     def build_foot(self):
         foot = Gtk.Box(spacing=16)
         foot.add_css_class("foot")
-        for h in self.plugin.hints:
-            foot.append(hint_label(h.keys, h.what))
+        self.hint_box = Gtk.Box(spacing=16)   # the tool's keys (Plugin.tab_hints)
+        foot.append(self.hint_box)
+        self.refresh_hints()
         self.tab_hint = hint_label("Tab", "tabs")
         self.tab_hint.set_visible(bool(self.tab_buttons))
         foot.append(self.tab_hint)
@@ -429,6 +431,15 @@ class Panel(Gtk.ApplicationWindow):
         foot.append(hint_label("F11", "fullscreen"))
         foot.append(hint_label("Esc", "close"))
         return foot
+
+    def refresh_hints(self):
+        """Redraws the tool's keys in the footer, for the tab it's on."""
+        if not hasattr(self, "hint_box"):
+            return
+        while (c := self.hint_box.get_first_child()) is not None:
+            self.hint_box.remove(c)
+        for h in self.plugin.tab_hints():
+            self.hint_box.append(hint_label(h.keys, h.what))
 
     # ------------------------------------------------------------- showing
     def release_card(self):
@@ -442,6 +453,7 @@ class Panel(Gtk.ApplicationWindow):
     def show_panel(self, args):
         self.set_full(bool(util.load_state("vyom-fullscreen", {}).get(self.plugin.name)), save=False)
         self.plugin.opened(args)
+        self.refresh_hints()
         if self.plugin.layout == "card":
             old = self.card_holder.get_first_child()
             if old is not None:
@@ -703,5 +715,9 @@ class Panel(Gtk.ApplicationWindow):
         threading.Thread(target=go, daemon=True).start()
 
     def set_status(self, text):
+        # A message takes the tool's key hints' place while it shows, so it
+        # isn't cut to a few letters; Tab, F11 and Esc stay.
         if hasattr(self, "status"):
             self.status.set_label(text)
+            self.status.set_tooltip_text(text or None)
+            self.hint_box.set_visible(not text)

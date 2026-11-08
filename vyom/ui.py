@@ -120,9 +120,20 @@ def buttons(specs, homogeneous=False):
     return row
 
 
-def switch(active, on_toggle):
+def switch(active, on_toggle, tooltip=""):
+    """An on/off switch. Its handler is s.handler (block it to set the state
+    from code). GTK's two tiny on/off images warn about their baselines in a
+    header, so they're hidden: the switch reads fine without them."""
     s = Gtk.Switch(active=active, valign=Gtk.Align.CENTER)
-    s.connect("state-set", lambda _s, state: (on_toggle(state), False)[1])
+    s.set_can_focus(False)
+    c = s.get_first_child()
+    while c is not None:
+        if isinstance(c, Gtk.Image):
+            c.set_visible(False)
+        c = c.get_next_sibling()
+    if tooltip:
+        s.set_tooltip_text(tooltip)
+    s.handler = s.connect("state-set", lambda _s, state: (on_toggle(state), False)[1])
     return s
 
 

@@ -209,7 +209,10 @@ can show a status strip above its rows (`build_strip()`: what's connected,
 what needs you), and a `Row` can carry coloured `chips` and signal bars
 (`level`, `level_text`, `level_color`). `vyom.ui` has the shared pieces:
 `hero`, `ring`, `bars`, `meter`, `steps`, `notice`, `segmented`, and buttons
-that show their key (`ui.button("Forget", forget, "danger", key="Ctrl+F")`). See
+that show their key (`ui.button("Forget", forget, "danger", key="Ctrl+F")`), and
+an on/off `ui.switch` for a header. The footer shows `hints`, or `tab_hints()`
+when the keys differ by tab (or mode); a `set_status("…")` message takes their
+place while it shows, so it's never cut short. See
 `vyom/plugin.py` for every hook (`tabs` with `self.tab`, `tab_changed`
 and `select_tab`; `header_extra`, `key`, `opened`, `closed`, `live`,
 `anchor`…), `vyom/ui.py` for widgets, and any tool repo

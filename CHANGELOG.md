@@ -2,6 +2,19 @@
 
 Newest first. Releases are tags (`vX.Y.Z`).
 
+## v0.6.2 -- 2026-11-08
+
+- **The footer's keys can follow the tab** (or a mode): a tool returns them from
+  `tab_hints()` and the panel redraws them on every tab switch
+  (`self.panel.refresh_hints()` any other time). tarang and bhava drop their own footer
+  rewiring.
+- **A status message has room.** While `set_status()` shows one, it takes the place of
+  the tool's key hints (Tab, F11 and Esc stay), so "Ctrl+Backspace again removes it ·
+  Esc keeps it" is no longer cut to a few letters; its tooltip has the whole text.
+- **`ui.switch()` doesn't warn in a header.** It hides GTK's two tiny on/off images
+  (they logged a baselines warning), can't take focus, takes a tooltip, and keeps its
+  handler as `.handler` for setting the state from code.
+
 ## v0.6.1 -- 2026-11-07
 
 - Sliders and progress bars no longer log "GtkGizmo reported min width -2" (GTK's -1px

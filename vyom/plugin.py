@@ -73,7 +73,7 @@ class Plugin:
     live = 0                    # seconds: re-run search() this often while open
     debounce = 40               # ms between a keystroke and search()
     keep_query = False          # keep the typed text between openings
-    hints = []                  # Hint(keys, what) for the footer
+    hints = []                  # Hint(keys, what) for the footer (tab_hints() per tab)
     # Tabs: [(key, label)] or [(key, label, tooltip)], a tool's main kinds. The
     # panel draws them in the top bar (a card too) and switches them with Tab /
     # Shift+Tab, Ctrl+H / Ctrl+L and Ctrl+1..9, Ctrl+0 (by number), the same in
@@ -169,6 +169,12 @@ class Plugin:
 
     def close(self):
         self.vyom.close_all()
+
+    def tab_hints(self):
+        """The footer's keys for the tab you're on: `hints` unless a tool
+        overrides it. The panel redraws them on every tab switch;
+        self.panel.refresh_hints() redraws them any other time."""
+        return self.hints
 
     def set_status(self, text):
         """A line of status in the footer (e.g. "connecting…")."""
