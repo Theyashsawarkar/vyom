@@ -118,8 +118,10 @@ class HintRow(Gtk.Widget):
     def do_measure(self, orientation, for_size):
         kids = [c for c in self.kids() if c.get_visible()]
         if orientation == Gtk.Orientation.HORIZONTAL:
-            nat = sum(c.measure(orientation, -1)[1] for c in kids) + self.spacing * max(0, len(kids) - 1)
-            return 0, nat, -1, -1     # minimum 0: the footer gives it what's left
+            # 0 and 0: the hints never ask for width (a natural width would
+            # grow a card's window to fit every hint); the panel's own width
+            # decides, and the hints that don't fit are left out whole.
+            return 0, 0, -1, -1
         sizes = [c.measure(orientation, -1) for c in kids] or [(0, 0, -1, -1)]
         return max(m[0] for m in sizes), max(m[1] for m in sizes), -1, -1
 
@@ -496,14 +498,14 @@ class Panel(Gtk.ApplicationWindow):
         return overlay
 
     def build_foot(self):
-        foot = Gtk.Box(spacing=16)
+        foot = Gtk.Box(spacing=12)
         foot.add_css_class("foot")
         if self.modal is not None:   # the mode and the keys typed so far (5, Space y…)
             foot.append(self.modal.pill)
             foot.append(self.modal.typed)
         # The tool's keys (Plugin.tab_hints). They never widen the panel and
         # a hint is never cut in half: what doesn't fit is left out whole.
-        self.hint_box = HintRow(spacing=16)
+        self.hint_box = HintRow(spacing=12)
         self.hint_box.set_hexpand(True)
         self.hint_box.add_css_class("hint-clip")
         self.hint_clip = self.hint_box
@@ -519,7 +521,7 @@ class Panel(Gtk.ApplicationWindow):
         self.status.set_visible(False)
         foot.append(self.status)
         if self.modal is not None:
-            self.modal_hints = Gtk.Box(spacing=16)
+            self.modal_hints = Gtk.Box(spacing=12)
             self.modal_hints.append(hint_label("Space", "leader"))
             self.modal_hints.append(hint_label("?", "keys"))
             self.modal_hints.append(hint_label("Esc", "back"))

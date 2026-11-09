@@ -2,6 +2,10 @@
 
 Newest first. Releases are tags (`vX.Y.Z`).
 
+## v0.7.1 -- 2026-11-09
+
+- **The footer never widens a card.** The key hints reported their full width as the footer's natural width, so a card grew to fit every hint (kendra was about 700 px wide for 420 asked). They now ask for no width: the card's own width decides, and hints that don't fit are left out whole, as promised. The footer's gaps are 12 px (were 16), so a little more fits.
+
 ## v0.7.0 -- 2026-11-09
 
 - **Core does what tools did themselves:** `Space u p` shows or hides the preview (each tool remembers it); a modal card marks the focused control (`vk-cursor`, an accent ring), since GTK's focus ring doesn't show in a layer-shell panel; `Plugin.build_rail()` gives a side rail a slot (`tabs_in_rail` hides the top tab bar). smriti, bhava, mudra, akashvani, patra, urja and vishram drop their own copies.
