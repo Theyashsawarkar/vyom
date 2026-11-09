@@ -128,11 +128,12 @@ Vyom panel: `printf 'Accept\nReject\n' | vyom dmenu -p "Pair?"`.
 
 Every panel: type to search, `Up`/`Down` (or `Ctrl+K`/`Ctrl+J`) move,
 `Page Up`/`Page Down` jump, `Enter` runs, `Esc` closes. A tool's tabs are its
-main kinds (ganit's Calculate and Convert, tarang's Networks and Hotspot); it
-shows each tab's number and switches them the same way everywhere: `Tab` /
-`Shift+Tab` (or `Ctrl+L`/`Ctrl+H`) for the next/previous tab and `Ctrl+1..9`
-(`Ctrl+0`: the tenth) by number. A tool opens from its own key; `Tab` never
-leaves it for another tool. Each tool adds its own keys (shown in its footer and README).
+main kinds (ganit's Calculate and Convert, tarang's Networks and Hotspot),
+shown by name and switched the same way everywhere: `Tab` / `Shift+Tab` (or
+`Ctrl+L`/`Ctrl+H`) for the next/previous tab and `Ctrl+1..9` (`Ctrl+0`: the
+tenth) by place, which each tab's tooltip says. A tool opens from its own key;
+`Tab` never leaves it for another tool. Each tool adds its own keys (shown in
+its footer and README).
 
 | Key | Action |
 |---|---|
@@ -145,6 +146,48 @@ leaves it for another tool. Each tool adds its own keys (shown in its footer and
 | `Ctrl+1..9` | Switch to the first..ninth tab (Ctrl+0: the tenth; its tooltip says which) |
 | `F11` | Toggle fullscreen (each tool remembers it) |
 | `Esc` | Close the panel |
+
+On a card (the power menu, quick settings, the battery), `Space` never presses
+the focused button; `Enter` does.
+
+### Vim keys
+
+A tool written for them (`modal = True`, [ADR 8](docs/adr/0008-vim-keys-in-the-panel.md))
+has vim's modes instead: in **NORMAL** mode every key is a command and typing
+changes nothing; in **INSERT** mode keys type (`Esc` goes back). The footer
+shows the mode, the keys typed so far and this mode's keys; after `Space` (or
+any prefix) a strip shows what comes next. The same keys work in every such tool:
+
+| Key | Action |
+|---|---|
+| `j / k` | Move down / up (a count first moves further: `5j`) |
+| `g g / G` | Jump to the first / last result (`5G`: the fifth) |
+| `Ctrl+d / Ctrl+u` | Scroll half a page down / up |
+| `H / L` | Switch to the previous / next tab (`Tab`, `Ctrl+H/L` still work) |
+| `/` | Search again: clear the box and type |
+| `i` | Type in the search box (insert mode) |
+| `Enter` | Open or run the selected result |
+| `q` | Close the panel |
+| `Esc` | Cancel a pending key, then clear the search, then close |
+| `?` | Show every key of this view |
+| `Space Space` | Open the palette: every action here, type to filter, `Enter` runs |
+| `Space ?` | Show every key of this view |
+| `Space q` | Close the panel |
+| `Space t <initial>` / `Space t 1..9` | Switch to a tab |
+| `Space u f` | Toggle fullscreen (`F11` too) |
+| `Space r` | Reload what the panel shows |
+
+In insert mode: `Esc` back to normal, `Ctrl+J/K` move the results, `Enter`
+runs. On a card: `j / k` move between its controls, `h / l` move a slider
+(else left/right), `0 / $` its minimum/maximum, `Enter` toggles or opens. A
+question (deleting something) takes `y` for yes; any other key keeps things.
+
+The `Space` groups mean the same in every tool, so a tool may leave one empty
+but never use its letter for something else: `Space` palette, `?` keys,
+`q` close, `t` tabs, `u` toggles, `y` copy, `f` find, `s` sort, `r` refresh,
+`a` add, `d` delete, `e` edit, `o` open outside, `g` go to, `m` mark,
+`,` settings, `k` ask AI. A tool's own groups use the other letters
+(b c h i j l n p v w x z).
 
 ## Configuration
 
@@ -218,6 +261,41 @@ and `select_tab`; `header_extra`, `key`, `opened`, `closed`, `live`,
 `anchor`…), `vyom/ui.py` for widgets, and any tool repo
 for a worked example. Put it in `~/.local/share/vyom/plugins/hello` (or a
 directory in `$VYOM_PLUGIN_PATH`) and `vyom reload`.
+
+### Vim keys in a tool
+
+Set `modal = True` and return the tool's keys as data from `keys(tab)`; the
+panel does the modes, counts, sequences, which-key strip, help and palette:
+
+```python
+from vyom.keys import Bind
+
+class Plugin(Base):
+    modal = True
+    start_mode = "insert"                # a search-first tool; "normal" for one you manage things in
+    key_groups = {" c": "container"}     # names for the tool's own Space groups
+
+    def keys(self, tab):
+        return [Bind("dd", "remove", "Remove the container (asks first)"),
+                Bind(" cr", "restart", "Restart the container"),
+                Bind(" yy", "copy", "Copy the name")]
+
+    def v_remove(self, count, arg):      # an action "verb:arg" runs v_<verb>(count, arg)
+        row = self.panel.selected_row()
+        self.confirm(f"Remove {row.title}?", lambda: ...)
+```
+
+A bind with the same keys as one of the panel's replaces it. A card lists
+its text boxes in `editables()` (they type only in insert mode); `escape()`
+takes `Esc` first (unpick something); `mode_hints(mode)` gives the footer's
+keys per mode; `key()` still sees every key first, for a tool's own
+overlay. `vyom.keys.annotations()` writes the `# keybind:` lines from the
+same binds (ganit's `scripts/keybinds.py` is an example). The panel also
+gives every modal tool `Space u p` (show or hide the preview, remembered per
+tool) and, on a card, a visible cursor on the focused control; a tool can add a
+side rail left of its results with `build_rail()` (`tabs_in_rail = True` when the
+rail shows its tabs). Python tools
+outside Vyom vendor the keys module with `scripts/vendor-keys.sh <file>`.
 
 ## Troubleshooting
 

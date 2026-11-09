@@ -201,3 +201,32 @@ scale trough { min-height: 6px; border-radius: 6px; background: alpha(white, 0.1
 scale highlight { border-radius: 6px; background: @mauve; border: none; margin: 0; }
 scale slider { min-width: 16px; min-height: 16px; margin: -6px 0; border-radius: 8px; background: @text;
                border: none; box-shadow: 0 0 0 3px alpha(@accent, 0.25); }
+
+/* ---- vim keys (modal.py, ADR 0008) ---- */
+.vk-mode { font-family: "JetBrainsMono Nerd Font"; font-size: 11px; font-weight: 800;
+  color: @crust; border-radius: 7px; padding: 1px 9px; }
+.vk-mode.normal { background: @accent; }
+.vk-mode.insert { background: @green; }
+.vk-pending { font-family: "JetBrainsMono Nerd Font"; font-size: 12px; font-weight: 700; color: @peach; }
+.status.ok { color: @green; }
+.status.bad { color: @yellow; }
+text.query.locked, entry.locked, text.locked { caret-color: transparent; }
+.vk-which { margin: 0 12px 8px; padding: 10px 14px; border-radius: 14px;
+  background: alpha(@crust, 0.97); border: 1px solid alpha(@accent, 0.55);
+  box-shadow: 0 0 14px alpha(@accent, 0.18); }
+.vk-which-title { font-size: 11px; font-weight: 700; letter-spacing: 1px; color: @accent; }
+.vk-which-ask { font-size: 13px; font-weight: 600; color: @red; }
+.vk-which-key { font-family: "JetBrainsMono Nerd Font"; font-size: 12px; font-weight: 700;
+  color: @peach; min-width: 64px; }
+.vk-which-what { font-size: 12.5px; color: @subtext1; }
+.vk-which-what.vk-group { color: @accent; }
+.vk-help-section { font-size: 10.5px; font-weight: 700; letter-spacing: 1px; color: @overlay1; margin-top: 4px; }
+.vk-pal-query { font-family: "JetBrainsMono Nerd Font"; font-size: 13px; color: @text; padding: 2px 8px; }
+.vk-pal-row { padding: 3px 8px; border-radius: 8px; }
+.vk-pal-row.on { background: alpha(@accent, 0.14); box-shadow: inset 0 0 0 1px alpha(@accent, 0.55); }
+
+/* Where you are on a modal card: GTK's focus ring doesn't show in a
+   layer-shell panel, so core marks the focused control itself. */
+.vk-cursor { box-shadow: 0 0 0 2px @accent, 0 0 10px alpha(@accent, 0.30); border-radius: 12px; }
+scale.vk-cursor { border-radius: 999px; }
+.hint-clip, .hint-clip > viewport { background: none; }

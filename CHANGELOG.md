@@ -2,6 +2,40 @@
 
 Newest first. Releases are tags (`vX.Y.Z`).
 
+## v0.7.0 -- 2026-11-09
+
+- **Core does what tools did themselves:** `Space u p` shows or hides the preview (each tool remembers it); a modal card marks the focused control (`vk-cursor`, an accent ring), since GTK's focus ring doesn't show in a layer-shell panel; `Plugin.build_rail()` gives a side rail a slot (`tabs_in_rail` hides the top tab bar). smriti, bhava, mudra, akashvani, patra, urja and vishram drop their own copies.
+- **The footer never widens the panel:** the tool's keys are clipped instead, a status message takes their place while it shows, and core's passing notes clear themselves after a few seconds (`set_status(…, clear_after=)`). On a small card the which-key strip, help and palette fit the card's width.
+- **Keys typed before the results arrive wait for them:** `4j` typed the moment a panel opens (or while a search runs) moves once the list is there, instead of nothing.
+- `keys.py` 1.0.2: Ctrl+`<` and Ctrl+`>` (`<C-<>`, `<C->>`) are one key each; before, they split into five and a bare `<` could wait forever behind them.
+- `Plugin.wants_all_keys()`: while a tool says it's busy (vishram's countdown), core drops a half-typed key, an open palette, help or confirm, and gives the next key to the tool's `key()` first, so any key can cancel.
+- The palette keeps one height while you filter (6 rows on a small card, 10 elsewhere, with "1–6 of 20" when there are more), so it never spills over a card's footer.
+- Footer keys never cut a hint in half: the ones that don't fit are left out whole, from the end (urja's "h / l change", kendra's "Enter toggle" were clipped mid-word).
+- `keys.py` 1.0.1: a bare `<` is its own key (it used to wait forever, read as the start of `<CR>`); only real key names in angle brackets are one token. `vendor-keys.sh --help` prints usage instead of writing a file named `--help`.
+- **Vim keys, for every tool that wants them** ([ADR 8](docs/adr/0008-vim-keys-in-the-panel.md)).
+  A tool sets `modal = True` and declares its keys as data (`keys(tab)` returning
+  `vyom.keys.Bind`s); the panel gives it NORMAL and INSERT modes, counts (`5j`),
+  sequences (`gg`, `dd`), `Space` as the leader with a which-key strip, `?` help, a
+  `Space Space` palette of every action, a `y`-only `confirm()`, a mode pill in the
+  footer, and a cursor for cards (`j`/`k` between controls, `h`/`l` a slider,
+  `Enter` toggles). The same core keys in every such tool: `j`/`k`, `gg`/`G`,
+  `Ctrl+d`/`Ctrl+u`, `H`/`L` tabs, `/`, `i`, `q`, `Esc`, `Space t`, `Space u f`
+  fullscreen, `Space r`. Space groups keep one meaning across tools (`y` copy,
+  `d` delete, `o` open outside…). Tools that don't opt in keep their keys exactly.
+- **`vyom/keys.py`**: the keys engine in pure Python (no GTK), so Vayu's other Python
+  tools share it; `scripts/vendor-keys.sh` copies it into one with a version and hash
+  header (`--check` finds a stale copy). Tests: `python3 -m unittest discover tests`.
+- **Space never presses a focused button on a card**, in any tool: GTK's default
+  made Space in the power menu lock the screen. `Enter` does.
+- `set_status(text, kind)`: `"ok"` or `"bad"` colours the message. New optional hooks:
+  `keys`, `editables`, `insert_target`, `escape`, `mode_changed`, `mode_hints`,
+  `keys_to_widget`, `confirm`, `vim_mode`, `set_vim_mode`.
+- README: tabs are shown by name (no number since v0.6.3), as it now says.
+- Fixed before release: `Tab` / `Shift+Tab` in a modal card's INSERT mode switch tabs (as `Ctrl+H` / `Ctrl+L` do), instead of taking the focus out of the box, after which typing went nowhere (ganit).
+- Fixed before release: `Shift+Enter` / `Ctrl+Enter` typed before the results arrive wait for them, like `Enter`, so they never act on the row that was there a moment ago.
+- Fixed before release: the `Space Space` palette resizes as it fills or filters (its rows spilled out of its frame on a big card).
+- Fixed before release: a rebuilt card's text box always gets its click-to-type (a freed box's `id()` could be reused, and the new box was skipped).
+
 ## v0.6.3 -- 2026-11-08
 
 - **Tabs show just their name**, no number before it. `Ctrl+1..9` still switches to the

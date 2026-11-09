@@ -7,15 +7,20 @@ Up/Down jump, Enter activates, Shift/Ctrl+Enter are a row's other actions
 (the plugin says which in its hints), Esc closes. A tool's tabs (its main
 kinds: Calculate and Convert, Networks and Hotspot) switch with Tab /
 Shift+Tab, Ctrl+1..9 and Ctrl+H / Ctrl+L, the same in every tool.
+
+A tool with `modal = True` has vim keys instead (modal.py, ADR 0008):
+NORMAL and INSERT modes, Space as the leader, ? help. Space never presses
+a focused button on a card, modal or not.
 """
 import logging
 import os
 import re
 import threading
 
-from gi.repository import Gdk, Gio, GLib, Gtk, Gtk4LayerShell as LayerShell, Pango
+from gi.repository import Gdk, Gio, GLib, Graphene, Gsk, Gtk, Gtk4LayerShell as LayerShell, Pango
 
 from . import util
+from .modal import Modal
 from .plugin import Row, Section
 
 # keybind: Vyom/every panel | Up / Down | Move to the previous / next result
@@ -87,6 +92,52 @@ def keycap_markup(keys):
 def hint_label(keys, what):
     """A footer hint: the keys as a key cap, then what they do."""
     return label(f"{keycap_markup(keys)} {GLib.markup_escape_text(what)}", "hint", markup=True)
+
+
+class HintRow(Gtk.Widget):
+    """The footer's keys in a row that never widens the panel and never cuts
+    a hint in half: hints that don't fit are left out whole, from the end."""
+    __gtype_name__ = "VyomHintRow"
+
+    def __init__(self, spacing=16):
+        super().__init__()
+        self.spacing = spacing
+
+    def append(self, child):
+        child.set_parent(self)
+
+    def remove(self, child):
+        child.unparent()
+
+    def kids(self):
+        c = self.get_first_child()
+        while c is not None:
+            yield c
+            c = c.get_next_sibling()
+
+    def do_measure(self, orientation, for_size):
+        kids = [c for c in self.kids() if c.get_visible()]
+        if orientation == Gtk.Orientation.HORIZONTAL:
+            nat = sum(c.measure(orientation, -1)[1] for c in kids) + self.spacing * max(0, len(kids) - 1)
+            return 0, nat, -1, -1     # minimum 0: the footer gives it what's left
+        sizes = [c.measure(orientation, -1) for c in kids] or [(0, 0, -1, -1)]
+        return max(m[0] for m in sizes), max(m[1] for m in sizes), -1, -1
+
+    def do_size_allocate(self, width, height, baseline):
+        x, fits = 0, True
+        for c in self.kids():
+            if not c.get_visible():
+                continue
+            w = c.measure(Gtk.Orientation.HORIZONTAL, -1)[1]
+            fits = fits and x + w <= width
+            c.set_child_visible(fits)
+            if fits:
+                c.allocate(w, height, -1, Gsk.Transform().translate(Graphene.Point().init(x, 0)))
+                x += w + self.spacing
+
+    def do_dispose(self):
+        while (c := self.get_first_child()) is not None:
+            c.unparent()
 
 
 def tile(icon, color, size=18, cls="tile"):
@@ -172,8 +223,14 @@ class Panel(Gtk.ApplicationWindow):
         self.pending = None
         self.live_id = None
         self.preview_box = None
+        self.preview_scroll = None   # the preview column (Space u p hides it)
         self.strip_holder = None
+        self.searching = False   # a search is on its way (keys that move wait for it)
         self.tab_buttons = {}    # tab key -> its button (build_tabs)
+        # Vim keys: every panel can ask (confirm) and show overlays; a modal
+        # tool's keys all go through it.
+        self.vim = Modal(self)
+        self.modal = self.vim if plugin.modal else None
 
         root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, vexpand=True)
         root.add_css_class("vyom-panel")
@@ -187,6 +244,12 @@ class Panel(Gtk.ApplicationWindow):
                 root.append(self.build_card_top())
             self.card_holder = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, vexpand=True)
             root.append(self.card_holder)
+            if plugin.height < 400:   # a small card: the strip grows the panel instead of floating over it
+                self.vim.which.set_margin_bottom(8)
+                self.vim.which.set_margin_top(4)
+                root.append(self.vim.which)
+            if self.modal is not None:   # a modal card gets the panel's footer (mode, keys, status)
+                root.append(self.build_foot())
         else:
             root.append(self.build_top())
             body = Gtk.Box(vexpand=True)
@@ -197,6 +260,11 @@ class Panel(Gtk.ApplicationWindow):
             self.strip_holder.add_css_class("strip-holder")
             column.append(self.strip_holder)
             column.append(self.build_results())
+            # A tool's side rail (bhava's categories): Plugin.build_rail().
+            rail = plugin.build_rail()
+            if rail is not None:
+                rail.set_hexpand(False)
+                body.append(rail)
             body.append(column)
             if plugin.preview:
                 # A fixed-width column: wrapped text in it must not grow it.
@@ -208,10 +276,15 @@ class Panel(Gtk.ApplicationWindow):
                 self.preview_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
                 self.preview_box.add_css_class("preview-inner")
                 pscroll.set_child(self.preview_box)
+                self.preview_scroll = pscroll
                 body.append(pscroll)
             root.append(body)
             root.append(self.build_foot())
-        self.set_child(root)
+        over = Gtk.Overlay()   # the which-key strip, help, palette and confirm float over the panel
+        over.set_child(root)
+        if self.vim.which.get_parent() is None:
+            over.add_overlay(self.vim.which)
+        self.set_child(over)
 
         keys = Gtk.EventControllerKey()
         keys.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
@@ -250,6 +323,16 @@ class Panel(Gtk.ApplicationWindow):
             state = util.load_state("vyom-fullscreen", {})
             state[self.plugin.name] = on
             util.save_state("vyom-fullscreen", state)
+
+    def set_preview(self, on, save=True):
+        """Shows or hides the preview column (Space u p); each tool remembers it."""
+        if self.preview_scroll is None:
+            return
+        self.preview_scroll.set_visible(on)
+        if save:
+            state = util.load_state("vyom-preview", {})
+            state[self.plugin.name] = on
+            util.save_state("vyom-preview", state)
 
     # ------------------------------------------------------------ building
     def sizes(self):
@@ -360,7 +443,7 @@ class Panel(Gtk.ApplicationWindow):
             b.connect("toggled", lambda btn, k=key: btn.get_active() and self.on_tab(k))
             self.tab_buttons[key] = b
             self.tab_box.append(b)
-        self.tab_box.set_visible(bool(tabs))
+        self.tab_box.set_visible(bool(tabs) and not getattr(self.plugin, "tabs_in_rail", False))
         if hasattr(self, "tab_hint"):
             self.tab_hint.set_visible(bool(tabs))
 
@@ -415,17 +498,35 @@ class Panel(Gtk.ApplicationWindow):
     def build_foot(self):
         foot = Gtk.Box(spacing=16)
         foot.add_css_class("foot")
-        self.hint_box = Gtk.Box(spacing=16)   # the tool's keys (Plugin.tab_hints)
+        if self.modal is not None:   # the mode and the keys typed so far (5, Space y…)
+            foot.append(self.modal.pill)
+            foot.append(self.modal.typed)
+        # The tool's keys (Plugin.tab_hints). They never widen the panel and
+        # a hint is never cut in half: what doesn't fit is left out whole.
+        self.hint_box = HintRow(spacing=16)
+        self.hint_box.set_hexpand(True)
+        self.hint_box.add_css_class("hint-clip")
+        self.hint_clip = self.hint_box
         foot.append(self.hint_box)
         self.refresh_hints()
-        self.tab_hint = hint_label("Tab", "tabs")
+        self.tab_hint = hint_label("H/L" if self.modal is not None else "Tab", "tabs")
         self.tab_hint.set_visible(bool(self.tab_buttons))
         foot.append(self.tab_hint)
-        self.status = label("", "status", hexpand=True, halign=Gtk.Align.END,
-                            ellipsize=Pango.EllipsizeMode.END)
+        # max_width_chars keeps its natural width small: a long message is
+        # cut with … instead of growing the panel past the screen.
+        self.status = label("", "status", hexpand=True, xalign=1,
+                            ellipsize=Pango.EllipsizeMode.END, max_width_chars=1)
+        self.status.set_visible(False)
         foot.append(self.status)
-        foot.append(hint_label("F11", "fullscreen"))
-        foot.append(hint_label("Esc", "close"))
+        if self.modal is not None:
+            self.modal_hints = Gtk.Box(spacing=16)
+            self.modal_hints.append(hint_label("Space", "leader"))
+            self.modal_hints.append(hint_label("?", "keys"))
+            self.modal_hints.append(hint_label("Esc", "back"))
+            foot.append(self.modal_hints)
+        else:
+            foot.append(hint_label("F11", "fullscreen"))
+            foot.append(hint_label("Esc", "close"))
         return foot
 
     def refresh_hints(self):
@@ -434,8 +535,13 @@ class Panel(Gtk.ApplicationWindow):
             return
         while (c := self.hint_box.get_first_child()) is not None:
             self.hint_box.remove(c)
-        for h in self.plugin.tab_hints():
+        hints = self.modal.hints() if self.modal is not None else self.plugin.tab_hints()
+        for h in hints:
             self.hint_box.append(hint_label(h.keys, h.what))
+        if self.modal is not None and hasattr(self, "modal_hints"):
+            normal = self.modal.mode == "normal"
+            self.modal_hints.set_visible(normal)
+            self.tab_hint.set_visible(normal and bool(self.tab_buttons))
 
     # ------------------------------------------------------------- showing
     def release_card(self):
@@ -448,6 +554,7 @@ class Panel(Gtk.ApplicationWindow):
 
     def show_panel(self, args):
         self.set_full(bool(util.load_state("vyom-fullscreen", {}).get(self.plugin.name)), save=False)
+        self.set_preview(bool(util.load_state("vyom-preview", {}).get(self.plugin.name, True)), save=False)
         self.plugin.opened(args)
         self.refresh_hints()
         if self.plugin.layout == "card":
@@ -463,11 +570,22 @@ class Panel(Gtk.ApplicationWindow):
                     parent.remove(card)
                 if card.get_parent() is None:
                     self.card_holder.append(card)
+            self.vim.machine.reset()
+            self.vim.over = None
+            self.vim.draw()
+            if self.modal is not None:
+                self.set_status("")
+                self.modal.opened()
             self.present()
             return
         if not self.plugin.keep_query:
             self.entry.set_text("")
         self.set_status("")
+        self.vim.machine.reset()
+        self.vim.over = None
+        self.vim.draw()
+        if self.modal is not None:
+            self.modal.opened()
         self.present()
         self.entry.grab_focus()
         self.refresh_now()
@@ -493,6 +611,7 @@ class Panel(Gtk.ApplicationWindow):
     def refresh_soon(self):
         if self.plugin.layout == "card":
             return
+        self.searching = True
         if self.pending:
             GLib.source_remove(self.pending)
         self.pending = GLib.timeout_add(self.plugin.debounce, self._fire)
@@ -506,6 +625,7 @@ class Panel(Gtk.ApplicationWindow):
         if self.plugin.layout == "card":
             return
         self.gen += 1
+        self.searching = True
         gen, q = self.gen, self.query()
         keep = self.selected_row() if keep_selection else None
 
@@ -561,6 +681,10 @@ class Panel(Gtk.ApplicationWindow):
             idx = next((i for i, (r, _) in enumerate(self.items)
                         if r.title == keep.title and r.subtitle == keep.subtitle), 0)
         self.select(idx if self.items else -1)
+        if self.pending is None:   # no newer search waiting: moves typed meanwhile run now
+            self.searching = False
+            if self.modal is not None:
+                self.modal.flush()
         return False
 
     # ------------------------------------------------------------ selection
@@ -649,9 +773,17 @@ class Panel(Gtk.ApplicationWindow):
     def on_key(self, _ctl, keyval, _code, state):
         name = Gdk.keyval_name(keyval) or ""
         mods = mods_of(state)
+        if self.modal is not None:
+            return self.modal.key(name, mods)
+        if self.vim.over == "confirm" and not name.startswith(("Shift", "Control", "Alt", "Super")):
+            return self.vim.key(name, mods)   # a question (Plugin.confirm): y or not
         # The tool first (e.g. Esc cancels tarang's password prompt).
         row = self.selected_row() if self.plugin.layout != "card" else None
         if self.plugin.key(name, row, mods):
+            return True
+        # Space never presses a focused button on a card (GTK's default would:
+        # the power menu's focused Lock locked the screen). Enter does.
+        if self.plugin.layout == "card" and keyval == Gdk.KEY_space and not isinstance(self.get_focus(), Gtk.Editable):
             return True
         if keyval == Gdk.KEY_Escape:
             self.app.close_all()
@@ -710,10 +842,31 @@ class Panel(Gtk.ApplicationWindow):
                 GLib.idle_add(lambda: (then(r), False)[1])
         threading.Thread(target=go, daemon=True).start()
 
-    def set_status(self, text):
+    def set_status(self, text, kind=None, clear_after=None):
         # A message takes the tool's key hints' place while it shows, so it
-        # isn't cut to a few letters; Tab, F11 and Esc stay.
+        # isn't cut to a few letters; Tab, F11 and Esc stay. (A modal tool
+        # keeps its hints: its messages are short, and the status ellipsizes.)
+        # kind: "ok" (green) or "bad" (yellow) colours it.
         if hasattr(self, "status"):
             self.status.set_label(text)
             self.status.set_tooltip_text(text or None)
-            self.hint_box.set_visible(not text)
+            for c in ("ok", "bad"):
+                self.status.remove_css_class(c)
+            if kind in ("ok", "bad"):
+                self.status.add_css_class(kind)
+            # The message takes the keys' place while it shows (both
+            # would only fit cut short); the keys come back when it clears.
+            self.status.set_visible(bool(text))
+            self.hint_clip.set_visible(not text)
+            # A passing note (core's "that key moved", "not a key here")
+            # clears itself, so the keys come back.
+            if getattr(self, "status_clear", None):
+                GLib.source_remove(self.status_clear)
+                self.status_clear = None
+            if text and clear_after:
+                def clear():
+                    self.status_clear = None
+                    if self.status.get_label() == text:
+                        self.set_status("")
+                    return False
+                self.status_clear = GLib.timeout_add(int(clear_after * 1000), clear)

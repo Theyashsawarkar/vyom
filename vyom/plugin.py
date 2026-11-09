@@ -82,6 +82,20 @@ class Plugin:
     tabs = []
     tab = ""
     tab_class = "tab"           # css class of the tab buttons (bhava: glyphs)
+    tabs_in_rail = False        # build_rail() shows the tabs: the top bar's tab buttons hide
+    # Vim keys (ADR 0008), opt-in: NORMAL / INSERT modes, counts, Space as
+    # the leader, ? help, Space Space palette. The tool's keys are data:
+    # keys(tab) returns vyom.keys.Bind objects; a Bind's action is a string
+    # "verb:arg" (the panel calls self.v_<verb>(count, arg), or its own
+    # c_<verb>: close, help, palette, fullscreen, refresh, tab, insert,
+    # normal, search, down, up, top, bottom, activate, focus, adjust, press,
+    # moved, nop) or a callable(count, arg).
+    modal = False
+    start_mode = "normal"       # "insert" for search-first tools, or {tab: mode}; [plugin.x] start_mode overrides
+    vim_counts = True           # digits are counts (5j); an exact digit bind still wins
+    card_cursor = True          # a card's j/k/h/l/Enter move and press its controls
+    key_groups = {}             # {" c": "container"}: names for the tool's own Space groups
+    insert_hints = [Hint("Esc", "normal mode")]
 
     def __init__(self, vyom, conf):
         self.vyom = vyom         # the application (self.vyom.close(), .open(name))
@@ -126,6 +140,11 @@ class Plugin:
         """A widget at the right end of the search bar (a switch, tabs)."""
         return None
 
+    def build_rail(self):
+        """A side rail left of the results (bhava's categories), built once per
+        panel; list and grid layouts. None: no rail."""
+        return None
+
     def key(self, name, row, mods):
         """Any other key (e.g. "d" with ctrl for Ctrl+D). Return True when
         handled."""
@@ -152,6 +171,61 @@ class Plugin:
         if self.panel:
             self.panel.build_tabs()
 
+    # ---- vim keys (modal = True)
+    def keys(self, tab):
+        """[vyom.keys.Bind] for this tab (both modes; Bind.mode says which).
+        A bind with the same keys as one of the panel's replaces it."""
+        return []
+
+    def editables(self):
+        """A card's text boxes: they take typing only in INSERT mode."""
+        return []
+
+    def insert_target(self):
+        """The box a card's INSERT mode types into."""
+        boxes = self.editables()
+        return boxes[0] if boxes else None
+
+    def keys_to_widget(self):
+        """True while every key should go straight to GTK (a dropdown's open
+        list): the panel's keys step aside."""
+        return False
+
+    def wants_all_keys(self):
+        """True while the tool must see every key first, even in the middle
+        of a sequence or a count (vishram's countdown: any key cancels it).
+        Core drops what was half-typed and calls key() before anything else."""
+        return False
+
+    def mode_changed(self, mode):
+        """NORMAL <-> INSERT happened ("normal" / "insert")."""
+
+    def escape(self):
+        """Esc in NORMAL mode with nothing pending: return True when the tool
+        used it (unpick a line); else the panel clears the search, then closes."""
+        return False
+
+    def mode_hints(self, mode):
+        """The footer's keys in this mode: tab_hints() in NORMAL, insert_hints
+        in INSERT."""
+        return self.tab_hints() if mode == "normal" else self.insert_hints
+
+    def vim_mode(self):
+        """"normal" or "insert" ("insert" for a tool that isn't modal)."""
+        m = getattr(self.panel, "modal", None) if self.panel else None
+        return m.mode if m is not None else "insert"
+
+    def set_vim_mode(self, mode):
+        m = getattr(self.panel, "modal", None) if self.panel else None
+        if m is not None:
+            m.set_mode(mode)
+
+    def confirm(self, question, action):
+        """Ask before something that can't be undone: y runs action(), any
+        other key keeps things as they are. Works in every tool."""
+        if self.panel:
+            self.panel.vim.confirm(question, action)
+
     # ---- card
     def build_card(self):
         """The whole content for layout = "card" (main thread)."""
@@ -176,7 +250,9 @@ class Plugin:
         self.panel.refresh_hints() redraws them any other time."""
         return self.hints
 
-    def set_status(self, text):
-        """A line of status in the footer (e.g. "connecting…")."""
+    def set_status(self, text, kind=None, clear_after=None):
+        """A line of status in the footer (e.g. "connecting…"); kind "ok" or
+        "bad" colours it. It takes the footer keys' place while it shows;
+        clear_after (seconds) clears a passing note by itself."""
         if self.panel:
-            self.panel.set_status(text)
+            self.panel.set_status(text, kind, clear_after)

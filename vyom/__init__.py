@@ -2,7 +2,7 @@
 
     from vyom import Plugin, Row, Section, Hint, util, ui
 """
-VERSION = "0.6.3"
+VERSION = "0.7.0"
 
 from .plugin import Hint, Plugin, Row, Section  # noqa: E402,F401
 
