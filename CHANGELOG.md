@@ -2,6 +2,10 @@
 
 Newest first. Releases are tags (`vX.Y.Z`).
 
+## v0.7.3 -- 2026-11-09
+
+- **A card panel is one piece of glass** (power menu, quick settings, battery). GTK's theme filled anything called `.card` with its solid `card_bg_color`, so the body was an opaque slate box above a see-through footer. Inside a panel a card has no fill now, and a card panel wears the footer's dark tint all over (`layout-card`), the footer only a line above it.
+
 ## v0.7.2 -- 2026-11-09
 
 - **In a grid, `Ctrl+H` / `Ctrl+L` move left / right** (as `Ctrl+J` / `Ctrl+K` move down / up), in insert and normal mode: in bhava's emoji grid they switched the category instead. Tabs stay on `H` / `L` and `Tab`; list and card panels keep `Ctrl+H` / `Ctrl+L` for tabs.

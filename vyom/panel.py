@@ -242,6 +242,7 @@ class Panel(Gtk.ApplicationWindow):
         self.root = root
 
         if plugin.layout == "card":
+            root.add_css_class("layout-card")
             if plugin.tabs:   # a card with tabs gets the same tab bar as every tool
                 root.append(self.build_card_top())
             self.card_holder = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, vexpand=True)

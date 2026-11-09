@@ -187,7 +187,14 @@ switch slider { border-radius: 999px; background: @crust; min-width: 16px; min-h
 .status { color: @subtext0; font-size: 11.5px; }
 
 /* ---- cards (layout = "card") ---- */
+/* GTK's theme fills anything called .card with card_bg_color (a solid slate):
+   inside a panel a card is part of the glass, not a box on top of it. */
+.vyom-panel .card { background: none; box-shadow: none; }
 .card { padding: 18px; }
+/* A card panel (power menu, quick settings, battery) is one piece of glass in
+   the footer's tone: the tint everywhere, the footer only a line above it. */
+.vyom-panel.layout-card { background-image: linear-gradient(alpha(@crust, 0.25), alpha(@crust, 0.25)); }
+.vyom-panel.layout-card .foot { background: transparent; }
 .card-title { font-size: 18px; font-weight: 700; }
 .card-sub { color: @overlay1; font-size: 12.5px; }
 .big-number { font-size: 34px; font-weight: 700; }
