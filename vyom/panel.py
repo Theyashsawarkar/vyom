@@ -28,7 +28,7 @@ from .plugin import Row, Section
 # keybind: Vyom/every panel | Page Up / Page Down | Jump a page of results
 # keybind: Vyom/every panel | Enter | Open or run the selected result
 # keybind: Vyom/every panel | Tab / Shift+Tab | Switch to the next / previous tab (tools with tabs; wraps around)
-# keybind: Vyom/every panel | Ctrl+H / Ctrl+L | Switch to the previous / next tab (tools with tabs)
+# keybind: Vyom/every panel | Ctrl+H / Ctrl+L | Switch to the previous / next tab (tools with tabs; in a grid like the emoji picker they move left / right)
 # keybind: Vyom/every panel | Ctrl+1..9 | Switch to the first..ninth tab (Ctrl+0: the tenth; its tooltip says which)
 # keybind: Vyom/every panel | F11 | Toggle fullscreen (each tool remembers it)
 # keybind: Vyom/every panel | Esc | Close the panel

@@ -154,11 +154,15 @@ class Modal:
         ]
         if getattr(self.p, "preview_scroll", None) is not None:
             out.append(b(" up", "preview", "Toggle the preview pane"))
+        # In a grid (bhava's emoji), Ctrl+H / Ctrl+L move left / right like
+        # Ctrl+J / Ctrl+K move down / up; tabs stay on H / L and Tab.
+        grid = not card and self.plugin.layout == "grid" and self.plugin.grid_columns > 1
         if self.p.tab_buttons:
             out += [b("H", "tab:-1", "Switch to the previous tab"), b("L", "tab:+1", "Switch to the next tab"),
                     b("<Tab>", "tab:+1", "", hidden=True), b("<S-Tab>", "tab:-1", "", hidden=True),
-                    b("<C-S-Tab>", "tab:-1", "", hidden=True),
-                    b("<C-h>", "tab:-1", "", hidden=True), b("<C-l>", "tab:+1", "", hidden=True)]
+                    b("<C-S-Tab>", "tab:-1", "", hidden=True)]
+            if not grid:
+                out += [b("<C-h>", "tab:-1", "", hidden=True), b("<C-l>", "tab:+1", "", hidden=True)]
             out += [b(f"<C-{(i + 1) % 10}>", f"tab:#{i}", "", hidden=True) for i in range(min(10, len(self.p.tab_buttons)))]
             out += self.tab_binds()
         if not card:
@@ -175,7 +179,8 @@ class Modal:
             ]
             if cols > 1:
                 out += [b("h", "left", "Move left"), b("l", "right", "Move right"),
-                        b("<Left>", "left", "", hidden=True), b("<Right>", "right", "", hidden=True)]
+                        b("<Left>", "left", "", hidden=True), b("<Right>", "right", "", hidden=True),
+                        b("<C-h>", "left", "", hidden=True), b("<C-l>", "right", "", hidden=True)]
         elif getattr(self.plugin, "card_cursor", True):
             out += [
                 b("j", "focus:+1", "Move to the next control"), b("k", "focus:-1", "Move to the previous control"),
@@ -203,12 +208,16 @@ class Modal:
                 b("<PgDn>", "pagedown", "", mode="insert", hidden=True),
                 b("<PgUp>", "pageup", "", mode="insert", hidden=True),
             ]
+            if grid:
+                insert += [b("<C-h>", "left", "Move left in the grid", mode="insert"),
+                           b("<C-l>", "right", "Move right in the grid", mode="insert")]
         if self.p.tab_buttons:   # a card's too: Tab never takes the focus out of the box you type in
             insert += [b("<Tab>", "tab:+1", "", mode="insert", hidden=True),
                        b("<S-Tab>", "tab:-1", "", mode="insert", hidden=True),
-                       b("<C-S-Tab>", "tab:-1", "", mode="insert", hidden=True),
-                       b("<C-h>", "tab:-1", "", mode="insert", hidden=True),
-                       b("<C-l>", "tab:+1", "", mode="insert", hidden=True)]
+                       b("<C-S-Tab>", "tab:-1", "", mode="insert", hidden=True)]
+            if not grid:
+                insert += [b("<C-h>", "tab:-1", "", mode="insert", hidden=True),
+                           b("<C-l>", "tab:+1", "", mode="insert", hidden=True)]
         return out + insert
 
     def tab_binds(self):

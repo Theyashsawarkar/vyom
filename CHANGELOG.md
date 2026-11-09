@@ -2,6 +2,10 @@
 
 Newest first. Releases are tags (`vX.Y.Z`).
 
+## v0.7.2 -- 2026-11-09
+
+- **In a grid, `Ctrl+H` / `Ctrl+L` move left / right** (as `Ctrl+J` / `Ctrl+K` move down / up), in insert and normal mode: in bhava's emoji grid they switched the category instead. Tabs stay on `H` / `L` and `Tab`; list and card panels keep `Ctrl+H` / `Ctrl+L` for tabs.
+
 ## v0.7.1 -- 2026-11-09
 
 - **The footer never widens a card.** The key hints reported their full width as the footer's natural width, so a card grew to fit every hint (kendra was about 700 px wide for 420 asked). They now ask for no width: the card's own width decides, and hints that don't fit are left out whole, as promised. The footer's gaps are 12 px (were 16), so a little more fits.
