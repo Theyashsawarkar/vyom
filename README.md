@@ -199,6 +199,7 @@ disabled = ["raga"]          # installed tools not to load
 width = 900                  # every panel opens at this size (times scale = 1.25)
 height = 520
 opacity = 0.72               # panel background: 1 solid, lower = more glass
+warm_up = true               # draw the launcher once off screen at start, so the first opening is instant
 css = ["~/.local/state/varna/vyom.css"]   # more stylesheets, loaded last (a theme's colours)
 
 [plugin.tarang]              # each tool's settings: see its README
@@ -258,7 +259,8 @@ when the keys differ by tab (or mode); a `set_status("…")` message takes their
 place while it shows, so it's never cut short. See
 `vyom/plugin.py` for every hook (`tabs` with `self.tab`, `tab_changed`
 and `select_tab`; `header_extra`, `key`, `opened`, `closed`, `live`,
-`anchor`…), `vyom/ui.py` for widgets, and any tool repo
+`anchor`, `prewarm` to fill caches while Vyom is idle after it starts…),
+`vyom/ui.py` for widgets (`warm_icons` for a tool's icons), and any tool repo
 for a worked example. Put it in `~/.local/share/vyom/plugins/hello` (or a
 directory in `$VYOM_PLUGIN_PATH`) and `vyom reload`.
 

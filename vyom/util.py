@@ -45,11 +45,42 @@ def run_full(cmd, timeout=30):
         return 127, "", str(e)
 
 
+def unit_part(name):
+    """name as a piece of a systemd unit name: [A-Za-z0-9_.-] only."""
+    return re.sub(r"[^A-Za-z0-9_.-]", "_", name)[:64] or "app"
+
+
+def adopt(pid, name):
+    """Moves a process Vyom just started into its own systemd user scope
+    (app-vyom-<name>-<pid>.scope in app.slice), the way desktop shells do.
+    Without it an app opened from a panel lives in vyom.service's cgroup:
+    its memory and CPU count as Vyom's, and stopping or restarting Vyom
+    kills it. False (and nothing else happens) without a systemd user
+    manager."""
+    try:
+        from gi.repository import Gio, GLib
+        bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+        props = [("PIDs", GLib.Variant("au", [pid])), ("Slice", GLib.Variant("s", "app.slice")),
+                 ("CollectMode", GLib.Variant("s", "inactive-or-failed"))]
+        bus.call_sync("org.freedesktop.systemd1", "/org/freedesktop/systemd1",
+                      "org.freedesktop.systemd1.Manager", "StartTransientUnit",
+                      GLib.Variant("(ssa(sv)a(sa(sv)))",
+                                   (f"app-vyom-{unit_part(name)}-{pid}.scope", "fail", props, [])),
+                      None, Gio.DBusCallFlags.NO_AUTO_START, 1000, None)
+        return True
+    except Exception as e:  # no systemd, no session bus, the process already exited
+        log.debug("couldn't move %s (pid %d) into its own scope: %s", name, pid, e)
+        return False
+
+
 def spawn(cmd):
-    """Starts a command detached and returns at once."""
-    subprocess.Popen(expand(cmd) if isinstance(cmd, str) else cmd, shell=isinstance(cmd, str),
-                     start_new_session=True, stdin=subprocess.DEVNULL,
-                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    """Starts a command detached, in its own systemd scope (see adopt), and
+    returns at once."""
+    p = subprocess.Popen(expand(cmd) if isinstance(cmd, str) else cmd, shell=isinstance(cmd, str),
+                         start_new_session=True, stdin=subprocess.DEVNULL,
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    argv0 = (expand(cmd).split() or ["sh"])[0] if isinstance(cmd, str) else cmd[0]
+    adopt(p.pid, os.path.basename(argv0))
 
 
 def have(tool):

@@ -13,6 +13,7 @@ import logging
 import os
 import sys
 import threading
+import time
 import tomllib
 
 import gi
@@ -221,9 +222,37 @@ class Vyom(Gtk.Application):
 
     def prewarm(self):
         """Build every panel now, so the first key press only shows one."""
+        t0 = time.monotonic()
         for name in list(self.plugins):
             self.panel(name)
+        log.info("built %d panels in %d ms", len(self.panels), (time.monotonic() - t0) * 1000)
+        # Then, one idle step at a time (a key press in between is served
+        # first): GTK's own first-window work, and each tool's caches. The
+        # first opening otherwise paid for both: 0.6 s for the launcher on
+        # a fast machine, seconds right after a boot.
+        steps = [(n, self.plugins[n].prewarm) for n in self.order if n in self.plugins] + [("gtk", self.warm_gtk)]
+        def step():
+            if not steps:
+                log.info("warmed up in %d ms", (time.monotonic() - t0) * 1000)
+                return False
+            name, fn = steps.pop(0)
+            t = time.monotonic()
+            try:
+                fn()
+                log.debug("prewarm %s: %d ms", name, (time.monotonic() - t) * 1000)
+            except Exception:  # a tool's cache is never worth a crash
+                log.exception("prewarm %s failed", name)
+            return True
+        GLib.idle_add(step, priority=GLib.PRIORITY_LOW)
         return False
+
+    def warm_gtk(self):
+        """One invisible first frame (Panel.warm_up) for the launcher, or
+        the first tool without it: the one-time GTK work it does is shared
+        by every panel. [vyom] warm_up = false turns it off."""
+        if not self.order or self.conf.get("vyom", {}).get("warm_up", True) is False:
+            return
+        self.panel("dvara" if "dvara" in self.plugins else self.order[0]).warm_up()
 
     def panel(self, name):
         if name not in self.panels:
@@ -240,13 +269,29 @@ class Vyom(Gtk.Application):
             why = self.skipped.get(name, "not installed")
             util.notify("Vyom", f"{name}: {why}", icon="dialog-warning")
             return
+        for q in self.panels.values():
+            q.end_warm_up()
         p = self.panel(name)
         if p.get_visible() and self.last_args.get(name) == args:
             self.close_all()          # the same key again closes it
             return
         self.close_all()
         self.last_args[name] = args
+        t0 = time.monotonic()
         p.show_panel(args)
+        self.log_first_paint(p, name, t0)
+
+    def log_first_paint(self, panel, name, t0):
+        """How long from the key press reaching Vyom to the panel's first
+        frame: debug normally, info when it's slow enough to notice."""
+        clock = panel.get_frame_clock()
+        if clock is None:
+            return
+        def painted(c, *_):
+            c.disconnect(hid)
+            ms = (time.monotonic() - t0) * 1000
+            log.log(logging.INFO if ms > 150 else logging.DEBUG, "%s: first frame in %d ms", name, ms)
+        hid = clock.connect("after-paint", painted)
 
     def on_dmenu(self, _a, param):
         self.close_all()
@@ -277,6 +322,13 @@ def main(argv=None):
         argv.remove("--debug")
     vlog.setup("vyom", debug=debug or None)
     log.info("vyom %s starting", VERSION)
+    # Started before the session has a display (D-Bus activated by an early
+    # notification, for akashvani, before sway's environment reached systemd):
+    # GTK would come up with no screen and serve nothing. Exit instead, so the
+    # unit's Restart= (or the session starting it) brings it back with one.
+    if not (os.environ.get("WAYLAND_DISPLAY") or os.environ.get("DISPLAY")) or Gdk.Display.get_default() is None:
+        log.error("no display yet (WAYLAND_DISPLAY isn't set): exiting; the session starts Vyom again")
+        return 1
     return Vyom().run(argv)
 
 

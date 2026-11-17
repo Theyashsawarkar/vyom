@@ -68,6 +68,26 @@ def icon_widget(icon, size=18):
     return label(icon or "", "glyph")
 
 
+def warm_icons(icons, sizes=(28,)):
+    """Loads Gio.Icons into GTK's icon cache at the pixel sizes a panel
+    shows them (icon_widget(icon, 18) is 28 px), drawing each once off
+    screen, so the first opening doesn't wait for SVGs to render. For a
+    tool's prewarm()."""
+    display = Gdk.Display.get_default()
+    if display is None:
+        return
+    theme = Gtk.IconTheme.get_for_display(display)
+    monitors = display.get_monitors()
+    scale = max([monitors.get_item(i).get_scale_factor() for i in range(monitors.get_n_items())] or [1])
+    snap = Gtk.Snapshot()
+    for icon in icons:
+        if not isinstance(icon, Gio.Icon):
+            continue
+        for size in sizes:
+            paintable = theme.lookup_by_gicon(icon, size, scale, Gtk.TextDirection.NONE, 0)
+            paintable.snapshot(snap, size, size)
+
+
 # Key cap colours (Pango can't read CSS colours): the theme's surface0 and
 # subtext1, set by the app from the loaded stylesheets (a theme's
 # @define-color), Catppuccin Mocha's until then.
@@ -294,6 +314,38 @@ class Panel(Gtk.ApplicationWindow):
         keys.connect("key-pressed", self.on_key)
         self.add_controller(keys)
         self.connect("close-request", lambda *_: (self.hide_panel(), True)[1])
+
+        # The pointer says what's clickable: a hand over buttons, switches,
+        # tabs and rows that open; a text beam over text boxes. GTK leaves it
+        # an arrow everywhere, and CSS can't set it.
+        self.pointer = None
+        motion = Gtk.EventControllerMotion()
+        motion.connect("motion", self.on_motion)
+        motion.connect("leave", lambda *_: self.point(None))
+        self.add_controller(motion)
+
+    CLICKABLE = (Gtk.Button, Gtk.Switch, Gtk.CheckButton, Gtk.DropDown, Gtk.MenuButton, Gtk.Scale,
+                 Gtk.LinkButton)
+    TYPING = (Gtk.Text, Gtk.Entry, Gtk.TextView, Gtk.PasswordEntry, Gtk.SearchEntry, Gtk.SpinButton)
+
+    def on_motion(self, _c, x, y):
+        w = self.pick(x, y, Gtk.PickFlags.DEFAULT)
+        name = None
+        while w is not None and w is not self:
+            if isinstance(w, self.TYPING):
+                name = "text"
+                break
+            if isinstance(w, self.CLICKABLE) or (
+                    isinstance(w, (Gtk.ListBoxRow, Gtk.FlowBoxChild)) and w.get_activatable()):
+                name = "pointer" if w.get_sensitive() else "not-allowed"
+                break
+            w = w.get_parent()
+        self.point(name)
+
+    def point(self, name):
+        if name != self.pointer:
+            self.pointer = name
+            self.set_cursor_from_name(name)
 
     # ---------------------------------------------------------- fullscreen
     def place(self):
@@ -603,9 +655,51 @@ class Panel(Gtk.ApplicationWindow):
         return True
 
     def hide_panel(self):
+        self.end_warm_up()
         if self.get_visible():
             self.hide()
             self.plugin.closed()
+
+    def warm_up(self):
+        """Shows this panel once where it can't be seen or used, then hides
+        it after its first frame: off the screen (anchored top-left with
+        large negative margins, so neither it nor the compositor's blur and
+        shadow are drawn), on the bottom layer, taking no keys. GTK does
+        most of its one-time work (renderer pipelines, glyph and icon
+        textures, styles) on a window's first frame, not when it's built:
+        0.6 s the first Super+d used to wait for. The namespace stays
+        "vyom": changing it rebuilds the surface, losing the warm-up."""
+        self.warming = True
+        self.set_full(bool(util.load_state("vyom-fullscreen", {}).get(self.plugin.name)), save=False)
+        for e in self.edges.values():
+            LayerShell.set_anchor(self, e, False)
+            LayerShell.set_margin(self, e, 0)
+        for e in ("top", "left"):
+            LayerShell.set_anchor(self, self.edges[e], True)
+            LayerShell.set_margin(self, self.edges[e], -20000)
+        LayerShell.set_layer(self, LayerShell.Layer.BACKGROUND)
+        LayerShell.set_keyboard_mode(self, LayerShell.KeyboardMode.NONE)
+        self.show_panel([])
+        clock = self.get_frame_clock()
+        if clock is None:
+            self.end_warm_up()
+            return
+        def painted(c, *_):
+            c.disconnect(hid)
+            GLib.idle_add(lambda: (self.end_warm_up(), False)[1])
+        hid = clock.connect("after-paint", painted)
+        GLib.timeout_add(3000, lambda: (self.end_warm_up(), False)[1])  # no frame came
+
+    def end_warm_up(self):
+        if not getattr(self, "warming", False):
+            return
+        self.warming = False
+        if self.get_visible():
+            self.hide()
+            self.plugin.closed()
+        LayerShell.set_layer(self, LayerShell.Layer.OVERLAY)
+        LayerShell.set_keyboard_mode(self, LayerShell.KeyboardMode.EXCLUSIVE)
+        self.place()
 
     # ------------------------------------------------------------ searching
     def query(self):

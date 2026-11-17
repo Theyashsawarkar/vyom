@@ -113,6 +113,12 @@ class Plugin:
         """The panel is about to show (args: from `vyom <name> ...`)."""
         self.args = args
 
+    def prewarm(self):
+        """Optional (Vyom 0.7.4): fill caches the first opening would
+        otherwise wait for (an app list, icons), once, while Vyom is idle
+        after it starts. Runs on the main loop: keep it short, and slow
+        command work goes through background()."""
+
     def closed(self):
         pass
 

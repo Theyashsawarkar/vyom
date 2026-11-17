@@ -2,6 +2,19 @@
 
 Newest first. Releases are tags (`vX.Y.Z`).
 
+## Unreleased
+
+- **The pointer says what's clickable**: a hand over buttons, switches, tabs and rows that open, a text beam over text boxes, in every panel (GTK left it an arrow everywhere).
+- **One box, not two, in a card's text boxes.** The card cursor ringed the focused widget, and in a text box that's the text inside it: a second ring inside the box's own border. Now the box itself carries the cursor (`vk-cursor` on the entry), so a tool can light its border.
+
+## v0.7.4 -- 2026-11-14
+
+- **Vyom exits when there's no display yet**, instead of running with no screen. D-Bus can start it before the session's environment is ready (akashvani, the notification server, is D-Bus activated by the first notification): it came up with no display, built no panels and held on until the session restarted it. Now it logs why and exits, and its unit or the session starts it again once there's a display.
+- **The first opening is as quick as the rest.** After `vyom daemon` starts, the launcher (or the first tool, without dvara) is shown once where it can't be seen or used (off the screen, on the bottom layer, taking no keys) and hidden after its first frame. GTK does most of its one-time work on a window's first frame, not when it's built: the first Super+d took 0.6 s and every later one 10-20 ms; now the first is 19 ms too (headless sway, measured). `[vyom] warm_up = false` turns it off. The warm-up runs one idle step at a time, so a key pressed during it is served first.
+- **`Plugin.prewarm()`**, optional: a tool fills the caches its first opening would wait for (dvara: its app list and icons), once, while Vyom is idle after it starts. `ui.warm_icons(icons, sizes)` loads Gio.Icons into GTK's icon cache at the sizes a panel draws them.
+- **Apps a panel opens get their own systemd scope** (`app-vyom-<name>-<pid>.scope` in `app.slice`, like a desktop shell's). `util.spawn` and the new `util.adopt(pid, name)` move the process there. Before, an app opened from a panel lived in `vyom.service`: its memory counted as Vyom's (1.2 GB with a browser open), and stopping or restarting Vyom killed it.
+- The log says how long building the panels and the warm-up took, and how long a panel took to its first frame (info when over 150 ms, else debug), so a slow opening shows in `journalctl --user -u vyom`.
+
 ## v0.7.3 -- 2026-11-09
 
 - **A card panel is one piece of glass** (power menu, quick settings, battery). GTK's theme filled anything called `.card` with its solid `card_bg_color`, so the body was an opaque slate box above a see-through footer. Inside a panel a card has no fill now, and a card panel wears the footer's dark tint all over (`layout-card`), the footer only a line above it.

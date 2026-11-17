@@ -7,7 +7,7 @@ import math
 
 from gi.repository import Gtk, Pango
 
-from .panel import hint_label, icon_widget, keycap_markup, label, tile  # noqa: F401  (re-exported)
+from .panel import hint_label, icon_widget, keycap_markup, label, tile, warm_icons  # noqa: F401  (re-exported)
 
 
 def vbox(*children, spacing=8, cls=None):

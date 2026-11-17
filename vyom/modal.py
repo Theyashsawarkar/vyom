@@ -523,6 +523,11 @@ class Modal:
         layer-shell panel."""
         f, items = self.focused()
         f = f if f in items else None
+        # In a text box the focus is the text inside it: ring the box itself,
+        # or the ring is drawn as a second box inside the first.
+        if isinstance(f, Gtk.Text) and isinstance(f.get_parent(), (Gtk.Entry, Gtk.PasswordEntry,
+                                                                      Gtk.SearchEntry, Gtk.SpinButton)):
+            f = f.get_parent()
         if f is self.cursor:
             return
         if self.cursor is not None:
