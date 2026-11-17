@@ -2,7 +2,7 @@
 
 Newest first. Releases are tags (`vX.Y.Z`).
 
-## Unreleased
+## v0.8.0 -- 2026-11-17
 
 - **The pointer says what's clickable**: a hand over buttons, switches, tabs and rows that open, a text beam over text boxes, in every panel (GTK left it an arrow everywhere).
 - **One box, not two, in a card's text boxes.** The card cursor ringed the focused widget, and in a text box that's the text inside it: a second ring inside the box's own border. Now the box itself carries the cursor (`vk-cursor` on the entry), so a tool can light its border.
