@@ -631,7 +631,7 @@ class Modal:
             return
         km = self.keymap("normal")
         name = "leader" if pending == K.LEADER else km.group_name(pending)
-        box.append(self.title(f"{K.spell(pending).upper()}  ·  {name.upper()}"))
+        box.append(self.title(f"{K.spell(pending)}  ·  {name}"))
         items = [(K.spell(t), w, g) for t, w, g in km.next_keys(pending)]
         box.append(self.grid(items))
         box.set_visible(True)
@@ -665,16 +665,16 @@ class Modal:
         return grid
 
     def draw_help(self, box):
-        title = self.plugin.title.upper()
+        title = self.plugin.title
         tab = next((t[1] for t in self.plugin.tabs if t[0] == self.plugin.tab), "")
-        box.append(self.title(f"EVERY KEY · {title}{' · ' + tab.upper() if tab else ''}  ·  j / k scroll · any other key closes"))
+        box.append(self.title(f"Every key · {title}{' · ' + tab if tab else ''}  ·  j / k scroll · any other key closes"))
         inner = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
         sections = K.help_rows(self.keymap("normal"))
         ins = [(K.spell(b.seq), b.desc) for b in self.keymap("insert").visible()]
         if ins:
             sections.append(("Insert mode (typing)", ins))
         for name, rows in sections:
-            inner.append(lbl(name.upper(), "vk-help-section", xalign=0))
+            inner.append(lbl(name, "vk-help-section", xalign=0))
             inner.append(self.grid([(k, w) for k, w in rows], cols=2))
         scroll = Gtk.ScrolledWindow()
         scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)

@@ -4,6 +4,7 @@ Newest first. Releases are tags (`vX.Y.Z`).
 
 ## Unreleased
 
+- Section labels, the which-key title and the every-key sheet are in sentence case, not all caps (Spatial: no all-caps labels).
 - The website, closer to Vayu's own: the tool's screenshot blurred behind the page, a centred hero with the logo and the verse, the page you're on as the white pill, glass "On this page" and footer panels, releases as cards. No glow behind the logo, no coloured line beside the verse.
 - **Spatial look** (Vayu's new design): panels are graphite glass with a lit top edge and 28 px corners (SwayFX's `layer_effects "vyom"` corner radius should match; ADR 9); where you are is brighter glass with a light rim instead of an accent frame and left bar; search bar, tabs, buttons, chips, segmented controls, sliders and progress bars are pills; colour stays for meaning only. The fallback colours (without varna) are Vayu's Spatial palette.
 - The website has Vayu's Spatial look: graphite glass, a floating navigation bar, near-white for links and the main button, and the tool's own colour only as its signature (the logo's glow, the shloka's line, the release dots). No more all-caps labels.

@@ -751,7 +751,7 @@ class Panel(Gtk.ApplicationWindow):
                     continue
                 w = Gtk.Box(spacing=8)
                 w.add_css_class("section")
-                w.append(label(r.title.upper(), "section-title", xalign=0))
+                w.append(label(r.title, "section-title", xalign=0))
                 if r.count != "":
                     w.append(label(str(r.count), "section-count"))
                 if r.note:

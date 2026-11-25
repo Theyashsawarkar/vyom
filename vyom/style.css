@@ -74,7 +74,7 @@ list.list, .list { background: none; padding: 6px 8px; }
 .row-sub { color: @subtext0; font-size: 12.5px; }
 .row-meta { color: @overlay1; font-size: 12px; font-family: "JetBrainsMono Nerd Font"; }
 .section { padding: 10px 10px 4px 10px; }
-.section-title { color: @overlay1; font-size: 11px; font-weight: 700; letter-spacing: 1px; }
+.section-title { color: @subtext0; font-size: 12.5px; font-weight: 600; }
 .section-count { color: @overlay0; font-size: 11px; font-weight: 600; font-family: "JetBrainsMono Nerd Font"; }
 .section-note { color: @overlay0; font-size: 11.5px; }
 .level { background: none; }
@@ -224,13 +224,13 @@ text.query.locked, entry.locked, text.locked { caret-color: transparent; }
 .vk-which { margin: 0 12px 8px; padding: 12px 16px; border-radius: 22px;
   background: alpha(@crust, 0.96); border: 1px solid alpha(white, 0.13);
   box-shadow: inset 0 1px 0 alpha(white, 0.12); }
-.vk-which-title { font-size: 11px; font-weight: 700; letter-spacing: 1px; color: @accent; }
+.vk-which-title { font-size: 12.5px; font-weight: 600; color: @accent; }
 .vk-which-ask { font-size: 13px; font-weight: 600; color: @red; }
 .vk-which-key { font-family: "JetBrainsMono Nerd Font"; font-size: 12px; font-weight: 700;
   color: @peach; min-width: 64px; }
 .vk-which-what { font-size: 12.5px; color: @subtext1; }
 .vk-which-what.vk-group { color: @accent; }
-.vk-help-section { font-size: 10.5px; font-weight: 700; letter-spacing: 1px; color: @overlay1; margin-top: 4px; }
+.vk-help-section { font-size: 12px; font-weight: 600; color: @subtext0; margin-top: 4px; }
 .vk-pal-query { font-family: "JetBrainsMono Nerd Font"; font-size: 13px; color: @text; padding: 2px 8px; }
 .vk-pal-row { padding: 3px 10px; border-radius: 12px; }
 .vk-pal-row.on { background: alpha(@accent, 0.15); box-shadow: inset 0 0 0 1px alpha(@accent, 0.22); }

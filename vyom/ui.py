@@ -271,7 +271,7 @@ def segmented(options, current, on_pick):
 
 def section(text, count="", note=""):
     """A section heading in a card or preview, like the list's."""
-    row = hbox(label(text.upper(), "section-title", xalign=0), spacing=8, cls="section")
+    row = hbox(label(text, "section-title", xalign=0), spacing=8, cls="section")
     if count != "":
         row.append(label(str(count), "section-count"))
     if note:
