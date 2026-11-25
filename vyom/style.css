@@ -1,69 +1,72 @@
-/* Vyom: Catppuccin Mocha glass, shared by every tool. The window is
-   transparent; .vyom-panel is the card SwayFX blurs behind
-   (layer_effects "vyom": corner_radius 20 = border-radius here). A tool
-   can add its own style.css next to its plugin.toml; ~/.config/vyom/
-   style.css loads last. */
-@define-color crust #11111b;
-@define-color mantle #181825;
-@define-color base #1e1e2e;
-@define-color surface0 #313244;
-@define-color surface1 #45475a;
-@define-color overlay0 #6c7086;
-@define-color overlay1 #7f849c;
-@define-color overlay2 #9399b2;
-@define-color subtext0 #a6adc8;
-@define-color subtext1 #bac2de;
-@define-color text #cdd6f4;
-@define-color rosewater #f5e0dc;
-@define-color mauve #cba6f7;
-@define-color pink #f5c2e7;
-@define-color red #f38ba8;
-@define-color peach #fab387;
-@define-color yellow #f9e2af;
-@define-color green #a6e3a1;
-@define-color teal #94e2d5;
-@define-color sky #89dceb;
-@define-color blue #89b4fa;
-@define-color lavender #b4befe;
-/* The highlight colour; a theme (varna's vyom.css) can redefine it. */
-@define-color accent @mauve;
+/* Vyom: Spatial glass, shared by every tool. Graphite glass that floats,
+   very round, colour only where it means something; where you are is
+   brighter glass. The window is transparent; .vyom-panel is the card
+   SwayFX blurs and shadows behind (layer_effects "vyom": corner_radius 28
+   = border-radius here). A tool can add its own style.css next to its
+   plugin.toml; ~/.config/vyom/style.css loads last. These colours are the
+   fallback; varna's vyom.css redefines them from the theme. */
+@define-color crust #0e0f11;
+@define-color mantle #141518;
+@define-color base #1b1c20;
+@define-color surface0 #2a2c31;
+@define-color surface1 #3a3c42;
+@define-color overlay0 #6a6d74;
+@define-color overlay1 #80838a;
+@define-color overlay2 #989ba1;
+@define-color subtext0 #b3b5ba;
+@define-color subtext1 #cdcfd3;
+@define-color text #f2f2f0;
+@define-color rosewater #f6e1d8;
+@define-color mauve #c9b6f2;
+@define-color pink #f4b4cc;
+@define-color red #ff9389;
+@define-color peach #f7b07d;
+@define-color yellow #f3d47f;
+@define-color green #8ee2a6;
+@define-color teal #82ddd5;
+@define-color sky #8fd6ec;
+@define-color blue #93c4ff;
+@define-color lavender #b8c2ff;
+/* Where you are: near-white in Vayu; a theme (varna's vyom.css) can redefine it. */
+@define-color accent #f4f4f2;
 
 window.vyom { background: transparent; }
 
 .vyom-panel {
-  border-radius: 20px;
+  border-radius: 28px;
   background-color: alpha(@base, 0.82);
-  background-image: linear-gradient(to bottom, alpha(white, 0.06), alpha(white, 0) 35%);
-  border: 1px solid alpha(@accent, 0.28);
+  /* lifts the graphite a little and lights the top of the glass */
+  background-image: linear-gradient(to bottom, alpha(white, 0.10), alpha(white, 0.05) 30%, alpha(white, 0.04));
+  border: 1px solid alpha(white, 0.13);
+  box-shadow: inset 0 1px 0 alpha(white, 0.16);
   color: @text;
-  font-family: "Inter", "Noto Sans", sans-serif;
+  font-family: "Adwaita Sans", "Inter", "Noto Sans", sans-serif;
   font-size: 13px;
 }
 .glyph { font-family: "JetBrainsMono Nerd Font"; }
 
 /* ---- search bar ---- */
-.topbar { padding: 12px 14px; border-bottom: 1px solid alpha(white, 0.06); }
-.mode { padding: 5px 11px 5px 9px; border-radius: 10px; font-weight: 600; font-size: 12.5px; }
+.topbar { margin: 10px 10px 2px; padding: 6px 8px; border-radius: 999px; background: alpha(white, 0.06); }
+.mode { padding: 5px 12px 5px 10px; border-radius: 999px; font-weight: 600; font-size: 12.5px; }
 .mode .glyph { font-size: 15px; }
-text.query, .query { font-size: 15px; color: @text; caret-color: @mauve; background: none; padding: 4px 2px; }
+text.query, .query { font-size: 15px; color: @text; caret-color: @accent; background: none; padding: 4px 2px; }
 .query placeholder, text.query placeholder { color: @overlay0; }
 
 /* ---- tabs (Plugin.tabs): the same in every tool ---- */
-.tabs button.tab { padding: 3px 10px; border-radius: 8px; font-size: 12px; font-weight: 500;
+.tabs button.tab { padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 500;
   background: none; border: none; box-shadow: none; color: @subtext0; min-height: 0; }
-.tabs button.tab:checked { background: alpha(white, 0.08); color: @text; box-shadow: inset 0 -2px 0 @accent; }
+.tabs button.tab:checked { background: alpha(white, 0.16); color: @text; box-shadow: inset 0 1px 0 alpha(white, 0.12); }
 .tabs button.tab:hover:not(:checked) { color: @subtext1; }
 /* The tab's number (Ctrl+<number> goes there): small and quiet. */
 
 /* ---- results ---- */
 .results { background: none; }
 list.list, .list { background: none; padding: 6px 8px; }
-.list row { padding: 0; border-radius: 13px; background: none; margin: 2px 0; outline: none; }
-/* Where you are, at a glance even on a dim screen: an accent frame, a tint
-   and a bar on the left edge. */
-.list row:selected { background: alpha(@accent, 0.10);
-  box-shadow: inset 4px 0 0 @accent, inset 0 0 0 2px alpha(@accent, 0.75); }
-.list row:hover:not(:selected) { background: alpha(white, 0.04); }
+.list row { padding: 0; border-radius: 18px; background: none; margin: 2px 0; outline: none; }
+/* Where you are: brighter glass with a lit rim, clear even on a dim screen. */
+.list row:selected { background: alpha(@accent, 0.15);
+  box-shadow: inset 0 0 0 1px alpha(@accent, 0.22), inset 0 1px 0 alpha(white, 0.14); }
+.list row:hover:not(:selected) { background: alpha(white, 0.05); }
 .list row.section-row { margin-top: 6px; }
 .row { padding: 9px 12px; min-height: 38px; }
 .row.dim { opacity: 0.55; }
@@ -78,9 +81,9 @@ list.list, .list { background: none; padding: 6px 8px; }
 .level-text { font-size: 12.5px; font-weight: 600; min-width: 64px; }
 .empty { color: @overlay0; font-size: 13px; }
 
-.tile { min-width: 38px; min-height: 38px; border-radius: 12px; background: alpha(white, 0.06); }
+.tile { min-width: 38px; min-height: 38px; border-radius: 999px; background: alpha(white, 0.08); }
 .tile .glyph { font-size: 18px; }
-.tile.big { min-width: 54px; min-height: 54px; border-radius: 15px; }
+.tile.big { min-width: 54px; min-height: 54px; border-radius: 18px; }
 .tile.big .glyph { font-size: 26px; }
 
 .badge { font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 999px; }
@@ -97,48 +100,48 @@ list.list, .list { background: none; padding: 6px 8px; }
 .c-blue { background-color: alpha(@blue, 0.15); color: @blue; }
 .c-lavender { background-color: alpha(@lavender, 0.15); color: @lavender; }
 .c-rose { background-color: alpha(@rosewater, 0.14); color: @rosewater; }
-.c-gray { background-color: alpha(white, 0.06); color: @subtext0; }
+.c-gray { background-color: alpha(white, 0.08); color: @subtext0; }
 
 /* ---- grid (emoji) ---- */
 flowbox.grid { padding: 8px 10px; }
-flowbox.grid flowboxchild { padding: 0; border-radius: 12px; outline: none; }
-flowbox.grid flowboxchild:selected { background: alpha(@accent, 0.18); box-shadow: inset 0 0 0 1px alpha(@accent, 0.35); }
+flowbox.grid flowboxchild { padding: 0; border-radius: 16px; outline: none; }
+flowbox.grid flowboxchild:selected { background: alpha(@accent, 0.16); box-shadow: inset 0 0 0 1px alpha(@accent, 0.24); }
 .cell { font-size: 28px; padding: 6px 0; min-height: 44px; }
 
 /* ---- preview pane ---- */
-.preview { border-left: 1px solid alpha(white, 0.06); background: alpha(@crust, 0.22); }
+.preview { border-left: 1px solid alpha(white, 0.05); background: alpha(@crust, 0.14); }
 .preview-inner { padding: 16px; }
 .p-title { font-size: 16px; font-weight: 700; }
 .p-meta { color: @overlay1; font-size: 12px; }
 .p-body { color: @subtext1; font-size: 12.5px; }
 .p-mono { font-family: "JetBrainsMono Nerd Font"; font-size: 11.5px; color: @subtext0;
-          background: alpha(@crust, 0.55); border-radius: 10px; padding: 10px; }
+          background: alpha(@crust, 0.45); border-radius: 16px; padding: 12px; }
 .kv-key { color: @overlay1; font-size: 12.5px; }
 .kv-val { font-size: 12.5px; }
 
 /* ---- buttons, chips, switches (cards and previews) ---- */
 button.btn {
-  padding: 7px 12px; border-radius: 10px; font-weight: 600; font-size: 12.5px;
-  background: alpha(white, 0.06); border: 1px solid alpha(white, 0.08); color: @text; box-shadow: none;
+  padding: 8px 16px; border-radius: 999px; font-weight: 600; font-size: 12.5px;
+  background: alpha(white, 0.08); border: none; color: @text; box-shadow: inset 0 1px 0 alpha(white, 0.08);
 }
-button.btn:hover { background: alpha(white, 0.11); }
+button.btn:hover { background: alpha(white, 0.14); }
 button.btn:focus-visible { outline: 2px solid alpha(@accent, 0.8); outline-offset: 1px; }
-button.btn.primary { background: @mauve; color: @crust; border-color: transparent; }
-button.btn.primary:hover { background: @lavender; }
-button.btn.danger { background: alpha(@red, 0.16); color: @red; border-color: alpha(@red, 0.3); }
-button.btn.ok { background: @green; color: @crust; border-color: transparent; }
-.chip { font-size: 11.5px; font-weight: 600; padding: 2px 9px; border-radius: 9px;
-  border: 1px solid alpha(currentColor, 0.4); }
+button.btn.primary { background: @accent; color: @crust; box-shadow: none; }
+button.btn.primary:hover { background: mix(@accent, white, 0.4); }
+button.btn.danger { background: alpha(@red, 0.16); color: @red; }
+button.btn.ok { background: @green; color: @crust; box-shadow: none; }
+.chip { font-size: 11.5px; font-weight: 600; padding: 2px 10px; border-radius: 999px;
+  border: 1px solid alpha(currentColor, 0.3); }
 .chip.c-gray { border-color: alpha(white, 0.1); }
 .chip-icon { font-size: 12.5px; }
 flowbox.chips flowboxchild { padding: 0; background: none; }
 .keycap { font-family: "JetBrainsMono Nerd Font"; font-size: 10.5px; font-weight: 600; padding: 0 6px;
-  border-radius: 6px; background: alpha(@crust, 0.35); border: 1px solid alpha(white, 0.1); }
+  border-radius: 7px; background: alpha(white, 0.08); border: none; }
 button.btn.primary .keycap, button.btn.ok .keycap { background: alpha(@crust, 0.18); border-color: alpha(@crust, 0.2); }
 
 /* ---- the status strip (Plugin.build_strip) and its building blocks ---- */
 .strip-holder { padding: 10px 12px 0 12px; }
-.hero { border-radius: 16px; padding: 12px 16px; border: 1px solid alpha(white, 0.08); background: alpha(white, 0.03); }
+.hero { border-radius: 22px; padding: 12px 16px; border: 1px solid transparent; background: alpha(white, 0.05); }
 .hero.h-green { border-color: alpha(@green, 0.4); background: alpha(@green, 0.06); }
 .hero.h-teal { border-color: alpha(@teal, 0.4); background: alpha(@teal, 0.07); }
 .hero.h-blue { border-color: alpha(@blue, 0.4); background: alpha(@blue, 0.07); }
@@ -150,14 +153,14 @@ button.btn.primary .keycap, button.btn.ok .keycap { background: alpha(@crust, 0.
 .hero-title { font-size: 16px; font-weight: 700; }
 .hero-sub { color: @subtext0; font-size: 12.5px; }
 .ring-text { font-weight: 800; font-size: 15px; }
-.soft { border-radius: 14px; padding: 12px 14px; background: alpha(white, 0.035); border: 1px solid alpha(white, 0.06); }
+.soft { border-radius: 20px; padding: 12px 14px; background: alpha(white, 0.05); border: none; }
 .meter-name { color: @overlay1; font-size: 12.5px; }
 .meter-value { font-weight: 700; font-size: 12.5px; }
 .steps { }
 .step { font-size: 11.5px; padding: 2px 9px; border-radius: 999px; border: 1px solid alpha(white, 0.1); color: @overlay1; }
 .step-done { color: @green; border-color: alpha(@green, 0.4); }
 .step-now { color: @yellow; border-color: alpha(@yellow, 0.5); }
-.notice { border-radius: 14px; padding: 10px 12px; border: 1px solid alpha(white, 0.1); }
+.notice { border-radius: 20px; padding: 10px 14px; border: 1px solid alpha(white, 0.1); }
 .notice-icon { font-size: 17px; }
 .notice-title { font-weight: 700; font-size: 13px; }
 .notice-text { color: @subtext0; font-size: 12.5px; }
@@ -167,8 +170,8 @@ button.btn.primary .keycap, button.btn.ok .keycap { background: alpha(@crust, 0.
 .notice.n-yellow .notice-icon, .notice.n-yellow .notice-title { color: @yellow; }
 .notice.n-green { border-color: alpha(@green, 0.5); background: alpha(@green, 0.07); }
 .notice.n-green .notice-icon, .notice.n-green .notice-title { color: @green; }
-.segmented { border-radius: 12px; padding: 3px; background: alpha(white, 0.05); border: 1px solid alpha(white, 0.07); }
-.segmented button.seg { border-radius: 9px; padding: 5px 10px; background: none; border: none; box-shadow: none;
+.segmented { border-radius: 999px; padding: 3px; background: alpha(white, 0.06); border: none; }
+.segmented button.seg { border-radius: 999px; padding: 5px 12px; background: none; border: none; box-shadow: none;
   color: @overlay2; font-weight: 600; font-size: 12.5px; min-height: 0; }
 .segmented button.seg.seg-on { background: @accent; color: @crust; }
 /* text colours that mean something (drawn widgets take theirs from these) */
@@ -181,8 +184,8 @@ switch:checked { background: @green; }
 switch slider { border-radius: 999px; background: @crust; min-width: 16px; min-height: 16px; margin: 2px; }
 
 /* ---- footer ---- */
-.foot { padding: 9px 16px; border-top: 1px solid alpha(white, 0.06); background: alpha(@crust, 0.25);
-        border-radius: 0 0 20px 20px; }
+.foot { padding: 10px 18px; border-top: 1px solid alpha(white, 0.05); background: alpha(@crust, 0.16);
+        border-radius: 0 0 28px 28px; }
 .hint { color: @overlay1; font-family: "JetBrainsMono Nerd Font"; font-size: 11px; }
 .status { color: @subtext0; font-size: 11.5px; }
 
@@ -193,34 +196,34 @@ switch slider { border-radius: 999px; background: @crust; min-width: 16px; min-h
 .card { padding: 18px; }
 /* A card panel (power menu, quick settings, battery) is one piece of glass in
    the footer's tone: the tint everywhere, the footer only a line above it. */
-.vyom-panel.layout-card { background-image: linear-gradient(alpha(@crust, 0.25), alpha(@crust, 0.25)); }
+.vyom-panel.layout-card { background-image: linear-gradient(to bottom, alpha(white, 0.10), alpha(white, 0.05) 30%, alpha(white, 0.04)); }
 .vyom-panel.layout-card .foot { background: transparent; }
 .card-title { font-size: 18px; font-weight: 700; }
 .card-sub { color: @overlay1; font-size: 12.5px; }
 .big-number { font-size: 34px; font-weight: 700; }
-progressbar trough { min-height: 6px; border-radius: 6px; background: alpha(white, 0.1); }
-progressbar progress { min-height: 6px; border-radius: 6px; background: @mauve; margin: 0; }
+progressbar trough { min-height: 8px; border-radius: 999px; background: alpha(white, 0.12); }
+progressbar progress { min-height: 8px; border-radius: 999px; background: @accent; margin: 0; }
 progressbar.m-green progress { background: @green; } progressbar.m-yellow progress { background: @yellow; }
 progressbar.m-red progress { background: @red; } progressbar.m-teal progress { background: @teal; }
 progressbar.m-blue progress { background: @blue; } progressbar.m-peach progress { background: @peach; }
 progressbar.m-sky progress { background: @sky; }
-scale trough { min-height: 6px; border-radius: 6px; background: alpha(white, 0.10); border: none; }
-scale highlight { border-radius: 6px; background: @mauve; border: none; margin: 0; }
-scale slider { min-width: 16px; min-height: 16px; margin: -6px 0; border-radius: 8px; background: @text;
-               border: none; box-shadow: 0 0 0 3px alpha(@accent, 0.25); }
+scale trough { min-height: 8px; border-radius: 999px; background: alpha(white, 0.12); border: none; }
+scale highlight { border-radius: 999px; background: @accent; border: none; margin: 0; }
+scale slider { min-width: 18px; min-height: 18px; margin: -6px 0; border-radius: 999px; background: @text;
+               border: none; box-shadow: 0 1px 4px alpha(black, 0.35); }
 
 /* ---- vim keys (modal.py, ADR 0008) ---- */
 .vk-mode { font-family: "JetBrainsMono Nerd Font"; font-size: 11px; font-weight: 800;
-  color: @crust; border-radius: 7px; padding: 1px 9px; }
+  color: @crust; border-radius: 999px; padding: 1px 10px; }
 .vk-mode.normal { background: @accent; }
 .vk-mode.insert { background: @green; }
 .vk-pending { font-family: "JetBrainsMono Nerd Font"; font-size: 12px; font-weight: 700; color: @peach; }
 .status.ok { color: @green; }
 .status.bad { color: @yellow; }
 text.query.locked, entry.locked, text.locked { caret-color: transparent; }
-.vk-which { margin: 0 12px 8px; padding: 10px 14px; border-radius: 14px;
-  background: alpha(@crust, 0.97); border: 1px solid alpha(@accent, 0.55);
-  box-shadow: 0 0 14px alpha(@accent, 0.18); }
+.vk-which { margin: 0 12px 8px; padding: 12px 16px; border-radius: 22px;
+  background: alpha(@crust, 0.96); border: 1px solid alpha(white, 0.13);
+  box-shadow: inset 0 1px 0 alpha(white, 0.12); }
 .vk-which-title { font-size: 11px; font-weight: 700; letter-spacing: 1px; color: @accent; }
 .vk-which-ask { font-size: 13px; font-weight: 600; color: @red; }
 .vk-which-key { font-family: "JetBrainsMono Nerd Font"; font-size: 12px; font-weight: 700;
@@ -229,11 +232,11 @@ text.query.locked, entry.locked, text.locked { caret-color: transparent; }
 .vk-which-what.vk-group { color: @accent; }
 .vk-help-section { font-size: 10.5px; font-weight: 700; letter-spacing: 1px; color: @overlay1; margin-top: 4px; }
 .vk-pal-query { font-family: "JetBrainsMono Nerd Font"; font-size: 13px; color: @text; padding: 2px 8px; }
-.vk-pal-row { padding: 3px 8px; border-radius: 8px; }
-.vk-pal-row.on { background: alpha(@accent, 0.14); box-shadow: inset 0 0 0 1px alpha(@accent, 0.55); }
+.vk-pal-row { padding: 3px 10px; border-radius: 12px; }
+.vk-pal-row.on { background: alpha(@accent, 0.15); box-shadow: inset 0 0 0 1px alpha(@accent, 0.22); }
 
 /* Where you are on a modal card: GTK's focus ring doesn't show in a
    layer-shell panel, so core marks the focused control itself. */
-.vk-cursor { box-shadow: 0 0 0 2px @accent, 0 0 10px alpha(@accent, 0.30); border-radius: 12px; }
+.vk-cursor { box-shadow: 0 0 0 2px alpha(@accent, 0.9), 0 0 12px alpha(@accent, 0.18); border-radius: 18px; }
 scale.vk-cursor { border-radius: 999px; }
 .hint-clip, .hint-clip > viewport { background: none; }

@@ -2,6 +2,11 @@
 
 Newest first. Releases are tags (`vX.Y.Z`).
 
+## Unreleased
+
+- **Spatial look** (Vayu's new design): panels are graphite glass with a lit top edge and 28 px corners (SwayFX's `layer_effects "vyom"` corner radius should match); where you are is brighter glass with a light rim instead of an accent frame and left bar; search bar, tabs, buttons, chips, segmented controls, sliders and progress bars are pills; colour stays for meaning only. The fallback colours (without varna) are Vayu's Spatial palette.
+- The website has Vayu's Spatial look: graphite glass, a floating navigation bar, near-white for links and the main button, and the tool's own colour only as its signature (the logo's glow, the shloka's line, the release dots). No more all-caps labels.
+
 ## v0.8.0 -- 2026-11-17
 
 - **The pointer says what's clickable**: a hand over buttons, switches, tabs and rows that open, a text beam over text boxes, in every panel (GTK left it an arrow everywhere).
