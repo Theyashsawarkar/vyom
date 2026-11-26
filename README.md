@@ -30,12 +30,12 @@
 </p>
 
 <p align="center">
-  <img alt="dvara, the app launcher: search on top, apps on the left, the selected app's preview and actions on the right" src="assets/screenshots/dvara.png" width="100%">
+  <img alt="dvara, the app launcher: search on top, apps on the left, the selected app's preview and actions on the right" src="assets/screenshots/dvara.webp" width="100%">
 </p>
 
 <p align="center">
-  <img alt="kendra, quick settings" src="assets/screenshots/kendra.png" width="32%">
-  <img alt="bhava, the emoji picker" src="assets/screenshots/bhava.png" width="66%">
+  <img alt="kendra, quick settings" src="assets/screenshots/kendra.webp" width="32%">
+  <img alt="bhava, the emoji picker" src="assets/screenshots/bhava.webp" width="66%">
 </p>
 
 > *Vyom* (व्योम) is Sanskrit for "sky": the space everything sits in.
