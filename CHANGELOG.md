@@ -4,6 +4,7 @@ Newest first. Releases are tags (`vX.Y.Z`).
 
 ## Unreleased
 
+- Section notes ("Enter connects", "closest first") are a step brighter, so they stay readable over a light wallpaper.
 - New screenshots in the Spatial look, taken with made-up demo data (WebP, sharp on high-density screens).
 - Section labels, the which-key title and the every-key sheet are in sentence case, not all caps (Spatial: no all-caps labels).
 - The website, closer to Vayu's own: the tool's screenshot blurred behind the page, a centred hero with the logo and the verse, the page you're on as the white pill, glass "On this page" and footer panels, releases as cards. No glow behind the logo, no coloured line beside the verse.
