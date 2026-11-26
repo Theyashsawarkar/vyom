@@ -32,6 +32,7 @@ class Row:
     icon: Any = ""              # a Nerd Font glyph, a Gio.Icon, or an image path
     color: str = "mauve"        # tile color: sky blue teal red peach mauve yellow green rose lavender
     meta: str = ""              # right-aligned text (a shortcut, a size, an age)
+    meta_color: str = ""        # the meta's colour when it means something (a battery: green / yellow / red)
     data: Any = None            # anything the plugin wants back in activate()
     markup: bool = False        # title/subtitle use Pango markup
     dim: bool = False           # greyed out (e.g. a stopped container)

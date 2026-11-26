@@ -211,7 +211,10 @@ def row_widget(row):
             lv.append(label(row.level_text, "level-text"))
         box.append(lv)
     if row.meta:
-        box.append(label(row.meta, "row-meta", markup=row.markup, valign=Gtk.Align.CENTER))
+        m = label(row.meta, "row-meta", markup=row.markup, valign=Gtk.Align.CENTER)
+        if row.meta_color:
+            m.add_css_class(f"t-{row.meta_color}")
+        box.append(m)
     return box
 
 

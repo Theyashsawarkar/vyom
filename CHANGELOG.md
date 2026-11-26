@@ -4,6 +4,7 @@ Newest first. Releases are tags (`vX.Y.Z`).
 
 ## Unreleased
 
+- A row's right-hand text can carry a colour that means something (`Row.meta_color`: green, yellow, red, peach), for a battery level in a list (setu).
 - Section notes ("Enter connects", "closest first") are a step brighter, so they stay readable over a light wallpaper.
 - New screenshots in the Spatial look, taken with made-up demo data (WebP, sharp on high-density screens).
 - Section labels, the which-key title and the every-key sheet are in sentence case, not all caps (Spatial: no all-caps labels).
