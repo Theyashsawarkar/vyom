@@ -2,6 +2,10 @@
 
 Newest first. Releases are tags (`vX.Y.Z`).
 
+## v0.9.1 -- 2026-11-27
+
+- A command a panel starts in the background (`bluetoothctl scan off` when setu hides) is collected as soon as it exits instead of staying a zombie until Vyom next started a process.
+
 ## v0.9.0 -- 2026-11-27
 
 - **One live state for every panel** (ADR 12, `vyom.live`). Wi-Fi and the hotspot (NetworkManager), Bluetooth and device batteries (BlueZ), the battery (UPower), the power profile, the volume, the backlight, systemd user units and the colour scheme are followed for the daemon's whole life by the signals their daemons send anyway; nothing polls. `live.get(name)` is the current state at once, `live.watch(name, fn)` keeps an open panel current. Quick settings, Wi-Fi, Bluetooth and battery read it, so they open without running a command. Other programs get the same on D-Bus (`dev.vayu.Vyom.State` at `/dev/vayu/Vyom/State`) and in `$XDG_RUNTIME_DIR/vayu/state/<name>.json`, written only when it changes. `[vyom] live = false` doesn't publish it.

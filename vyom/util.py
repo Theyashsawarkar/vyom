@@ -81,6 +81,19 @@ def spawn(cmd):
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     argv0 = (expand(cmd).split() or ["sh"])[0] if isinstance(cmd, str) else cmd[0]
     adopt(p.pid, os.path.basename(argv0))
+    reap(p)
+
+
+def reap(p):
+    """Collects a spawned child as soon as it exits (GLib's child watch),
+    so a short command (`bluetoothctl scan off`) doesn't stay a zombie
+    until Python next starts a process. Without a GLib main loop the
+    Popen object is kept and polled by subprocess as before."""
+    try:
+        from gi.repository import GLib
+        GLib.child_watch_add(GLib.PRIORITY_DEFAULT_IDLE, p.pid, lambda pid, status: p.poll())
+    except Exception:
+        pass
 
 
 def have(tool):
