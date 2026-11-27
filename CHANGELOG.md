@@ -2,7 +2,7 @@
 
 Newest first. Releases are tags (`vX.Y.Z`).
 
-## Unreleased
+## v0.9.0 -- 2026-11-27
 
 - **One live state for every panel** (ADR 12, `vyom.live`). Wi-Fi and the hotspot (NetworkManager), Bluetooth and device batteries (BlueZ), the battery (UPower), the power profile, the volume, the backlight, systemd user units and the colour scheme are followed for the daemon's whole life by the signals their daemons send anyway; nothing polls. `live.get(name)` is the current state at once, `live.watch(name, fn)` keeps an open panel current. Quick settings, Wi-Fi, Bluetooth and battery read it, so they open without running a command. Other programs get the same on D-Bus (`dev.vayu.Vyom.State` at `/dev/vayu/Vyom/State`) and in `$XDG_RUNTIME_DIR/vayu/state/<name>.json`, written only when it changes. `[vyom] live = false` doesn't publish it.
 - **Panels you use often stay warm** (ADR 11, changes ADR 10). A hidden panel keeps its surface, so reopening it is instant; only a rarely used one lets go of it (its buffers in graphics memory, about 10 MB), after 10 minutes hidden (`[vyom] release_after`, default 600; `false`: never). Never released: the launcher, the panels in `[vyom] keep`, a tool with `keep = true` in its section, and any panel opened `[vyom] keep_often` times (default 5) in the last week. The launcher no longer lets go after the warm-up (it reopened in 36-66 ms; now 10-17).
