@@ -13,6 +13,10 @@
 # desktop show through (0.3 to 1):
 # opacity = 0.72
 # css = ["~/.local/state/varna/vyom.css"]   # more stylesheets, loaded last
+# Seconds a hidden panel keeps its surface (its buffers in graphics
+# memory, ~10 MB a panel) before letting go of it; opening it after that
+# takes 10-20 ms more. false keeps every surface:
+# release_after = 30
 
 # Each tool's own settings live under [plugin.<name>]; its README lists
 # them. A few examples:

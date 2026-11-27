@@ -4,6 +4,8 @@ Newest first. Releases are tags (`vX.Y.Z`).
 
 ## Unreleased
 
+- **Less memory: hidden panels let go of their surfaces** (ADR 10). A panel hidden for 30 s unrealizes (its widgets and the tool's data stay; its window on the compositor and its buffers in graphics memory go) and the C heap is trimmed. With every tool opened once, Vyom held 132 MB of graphics memory that no `ps` or `smaps` shows; now 35-40 MB. Opening a panel that let go takes 10-20 ms more; one reopened within 30 s is as quick as before. `[vyom] release_after = <seconds>` changes the wait, `false` keeps every surface.
+- **The heap is trimmed after start-up**: after a Mesa update, the driver compiles its shaders inside Vyom and the C heap stayed at 140 MB; now it goes back to about 20 MB. `util.trim_memory()` does it (glibc's `malloc_trim`, under a millisecond), for a tool that frees a lot too (a notification's popup closing).
 - A row's right-hand text can carry a colour that means something (`Row.meta_color`: green, yellow, red, peach), for a battery level in a list (setu).
 - Section notes ("Enter connects", "closest first") are a step brighter, so they stay readable over a light wallpaper.
 - New screenshots in the Spatial look, taken with made-up demo data (WebP, sharp on high-density screens).

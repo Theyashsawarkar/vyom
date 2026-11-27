@@ -173,3 +173,26 @@ def human_bytes(n):
 
 def strip_markup(s):
     return re.sub(r"<[^>]+>", "", s)
+
+
+_malloc_trim = None
+
+
+def trim_memory():
+    """Hands the C heap's free pages back to the system (glibc's
+    malloc_trim). GTK, Pango and the Vulkan driver free a lot when a panel
+    goes away, but glibc keeps the pages: after Mesa compiles its shaders
+    (the first start after a driver update) the heap stayed at 140 MB, 20
+    MB with this. Under a millisecond; a no-op without glibc. True if
+    anything was returned."""
+    global _malloc_trim
+    if _malloc_trim is None:
+        try:
+            import ctypes
+            # The C library this process already has (no ctypes.util: it
+            # runs ldconfig to look for it, 100+ ms).
+            _malloc_trim = ctypes.CDLL(None).malloc_trim
+            _malloc_trim.argtypes = [ctypes.c_size_t]
+        except (OSError, AttributeError):   # musl and friends have no malloc_trim
+            _malloc_trim = False
+    return bool(_malloc_trim and _malloc_trim(0))

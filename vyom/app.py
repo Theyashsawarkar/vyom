@@ -234,6 +234,10 @@ class Vyom(Gtk.Application):
         def step():
             if not steps:
                 log.info("warmed up in %d ms", (time.monotonic() - t0) * 1000)
+                # Starting leaves the C heap full of freed pages (GTK's
+                # start-up, Mesa's shader compiler after a driver update:
+                # 140 MB, 20 MB trimmed): give them back.
+                GLib.timeout_add(1000, lambda: (util.trim_memory(), False)[1])
                 return False
             name, fn = steps.pop(0)
             t = time.monotonic()

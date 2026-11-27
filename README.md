@@ -200,6 +200,7 @@ width = 900                  # every panel opens at this size (times scale = 1.2
 height = 520
 opacity = 0.72               # panel background: 1 solid, lower = more glass
 warm_up = true               # draw the launcher once off screen at start, so the first opening is instant
+release_after = 30           # seconds a hidden panel keeps its surface (graphics memory); false: always
 css = ["~/.local/state/varna/vyom.css"]   # more stylesheets, loaded last (a theme's colours)
 
 [plugin.tarang]              # each tool's settings: see its README

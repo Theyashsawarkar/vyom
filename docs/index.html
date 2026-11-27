@@ -27,7 +27,7 @@
 <p class="lead">Beautiful, keyboard-driven panels for Wayland: the runtime behind Vayu&#x27;s launcher and system panels.</p>
 <figure class="shloka"><p lang="sa">यथाकाशस्थितो नित्यं वायुः सर्वत्रगो महान् ।<br>तथा सर्वाणि भूतानि मत्स्थानीत्युपधारय ॥</p><figcaption>As the great wind, moving everywhere, always rests in the sky, so all things rest in me. <cite>Bhagavad Gītā 9.6</cite></figcaption></figure>
 <div class="cta"><a class="btn primary" href="#install">Install</a><a class="btn" href="https://github.com/Theyashsawarkar/vyom">Source on GitHub</a><a class="btn" href="changelog.html">What's new in v0.8.0</a></div>
-<div class="meta"><span><b>v0.8.0</b> latest</span><span><b>29</b> releases</span><span><b>9</b> decisions recorded</span><span><b>MIT</b> license</span></div>
+<div class="meta"><span><b>v0.8.0</b> latest</span><span><b>29</b> releases</span><span><b>10</b> decisions recorded</span><span><b>MIT</b> license</span></div>
 </header>
 <figure class="shot"><img src="assets/screenshots/dvara.webp" alt="dvara, the app launcher: search on top, apps on the left, the selected app's preview and actions on the right" fetchpriority="high"></figure>
 <div class="wrap"><aside class="toc"><b>On this page</b><a class="l2" href="#the-tools">The tools</a><a class="l2" href="#install">Install</a><a class="l2" href="#usage">Usage</a><a class="l3" href="#vim-keys">Vim keys</a><a class="l2" href="#configuration">Configuration</a><a class="l2" href="#writing-a-tool">Writing a tool</a><a class="l3" href="#vim-keys-in-a-tool">Vim keys in a tool</a><a class="l2" href="#troubleshooting">Troubleshooting</a><a class="l2" href="#contributing">Contributing</a><a class="l2" href="#license">License</a></aside><article>
@@ -84,6 +84,7 @@ width = 900                  # every panel opens at this size (times scale = 1.2
 height = 520
 opacity = 0.72               # panel background: 1 solid, lower = more glass
 warm_up = true               # draw the launcher once off screen at start, so the first opening is instant
+release_after = 30           # seconds a hidden panel keeps its surface (graphics memory); false: always
 css = [&quot;~/.local/state/varna/vyom.css&quot;]   # more stylesheets, loaded last (a theme&#x27;s colours)
 
 [plugin.tarang]              # each tool&#x27;s settings: see its README
