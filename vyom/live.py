@@ -33,6 +33,23 @@ Get(name)), and $XDG_RUNTIME_DIR/vayu/state/<name>.json, replaced (atomic
 rename) only when its contents change. Both hold a summary (Wi-Fi without
 the scan list); a (re)started Vyom writes everything fresh.
 
+Graphs draw what live has kept since the daemon started (Vyom 0.10):
+
+    live.history("net")            # the last minute of speeds, per device
+    live.history("battery")        # the charge over the last hours
+    h = live.watch("net", fn, fast=True)   # fn(None) on each new reading
+
+  net            each connected device's byte counters (sysfs, no command),
+                 read every 2 s for the daemon's life (every second while a
+                 panel draws them), the last minute kept: nothing connected,
+                 no timer
+  battery        UPower's own charge record, read once, then every change
+                 its signals bring: no timer
+
+Neither is exported in the state files or pushed on D-Bus (readings every
+2 s would wake every program that follows them); dev.vayu.Vyom.State's
+History(name) method returns one as JSON when asked.
+
 get() is safe from any thread (a search() worker reads it too); watch()
 callbacks and everything else run on the GTK main loop. A tool that must
 work with an older Vyom imports this in a try and keeps its old path:
@@ -42,6 +59,7 @@ work with an older Vyom imports this in a try and keeps its old path:
     except ImportError:
         live = None
 """
+import collections
 import copy
 import glob
 import logging
@@ -70,10 +88,17 @@ def get(name):
         return None
 
 
-def watch(name, fn):
+def watch(name, fn, fast=False):
     """Calls fn(snapshot) on the main loop whenever the source changes
     (several changes in a row come as one call), and once when it first
-    becomes known. Returns a handle for unwatch()."""
+    becomes known. Returns a handle for unwatch().
+
+    watch("net", fn) calls fn(None) after each new throughput reading
+    (history("net") has it); fast=True asks for one a second instead of
+    every two while the handle lives (a graph drawn by the second)."""
+    if name not in SOURCES and name in HISTORIES:
+        h = _history(name)
+        return h.watch(fn, fast) if h is not None else None
     src = _source(name)
     if src is None:
         return None
@@ -85,10 +110,39 @@ def watch(name, fn):
 def unwatch(handle):
     if not handle:
         return
+    if handle[0] not in SOURCES and handle[0] in _histories:
+        _histories[handle[0]].unwatch(handle)
+        return
     src = _sources.get(handle[0])
     if src is not None and handle[1] in src.watchers:
         src.watchers.remove(handle[1])
         src.watched(bool(src.watchers))
+
+
+def history(name, **kw):
+    """What a graph draws, kept since the daemon started (Vyom 0.10):
+
+      history("net", dev=None, step=1, window=60)
+          {"dev": "wlan0", "step": 1, "rx": [bytes/s...], "tx": [...],
+           "totals": (rx_bytes, tx_bytes), "devices": [...]}, oldest first,
+          the last `window` seconds in `step`-second bins (fewer while
+          there's less, none for a device that isn't up); dev None: the
+          Wi-Fi device while it's connected, else the first device up.
+          None without NetworkManager (a tool samples by itself then).
+      history("battery", seconds=10800)
+          [(unix time, percent, charging)]: UPower's own record (on disk,
+          kept by upowerd anyway) and every change since; the first point
+          is the one before the window (the charge then, carried forward).
+
+    Safe from any thread: a look at memory, no command, no file read."""
+    h = _history(name)
+    if h is None:
+        return None
+    try:
+        return h.history(**kw)
+    except Exception:   # never take a panel down
+        log.exception("history %s", name)
+        return None
 
 
 def start(*names):
@@ -116,6 +170,7 @@ class Source:
 
     def __init__(self):
         self.watchers = []
+        self.hooks = []      # fn() at once on every change (live's own histories)
         self._pending = 0
         self._dirty = True
         self._snap = None
@@ -147,6 +202,8 @@ class Source:
         """Something changed: tell the watchers once, at idle."""
         self._dirty = True
         self._export = True
+        for h in self.hooks:
+            h()
         if (self.watchers or _exporter is not None) and not self._pending:
             self._pending = GLib.idle_add(self._notify)
 
@@ -1033,6 +1090,277 @@ class Theme(Source):
         return {"color_scheme": scheme, "dark": scheme == "prefer-dark", "gtk_theme": self.settings.get_string("gtk-theme")}
 
 
+# ---------------------------------------------------------------- histories
+# A graph that opened empty and filled while you watched (kendra's and
+# tarang's network speed) or lost its past when Vyom restarted (urja's
+# charge) draws, instead, what these kept since the daemon started.
+_histories = {}
+
+
+def _history(name):
+    h = _histories.get(name)
+    if h is None:
+        cls = HISTORIES.get(name)
+        if cls is None:
+            return None
+        h = _histories[name] = cls()
+        try:
+            h.start()
+        except Exception:
+            log.exception("history %s didn't start", name)
+    return h
+
+
+def _boottime():
+    """Seconds since boot, suspend included: a reading from before a
+    suspend is as old as it really is, not a moment ago."""
+    try:
+        return time.clock_gettime(time.CLOCK_BOOTTIME)
+    except (AttributeError, OSError):
+        return time.monotonic()
+
+
+SYS_NET = "/sys/class/net"
+
+
+def net_counters(dev, base=None):
+    """(rx_bytes, tx_bytes) of a network device from sysfs, or None."""
+    try:
+        d = os.path.join(base or SYS_NET, dev, "statistics")
+        with open(os.path.join(d, "rx_bytes"), "rb") as rx, open(os.path.join(d, "tx_bytes"), "rb") as tx:
+            return int(rx.read()), int(tx.read())
+    except (OSError, ValueError, TypeError):
+        return None
+
+
+def net_bins(readings, step=1, window=60, gap=6.0):
+    """[(time, rx_bytes, tx_bytes)] (oldest first) -> (rx, tx): bytes a
+    second in `step`-second bins ending at the last reading, at most
+    `window` seconds' worth, fewer while there's less. Readings may come
+    every second or every two (or mixed): between two readings the speed is
+    the bytes moved over the time, spread evenly over the bins it covers.
+    Two readings more than `gap` seconds apart (a suspend, a disconnect) or
+    with a counter that went back (the driver reloaded) moved nothing that
+    can be known: those bins are 0, never a spike."""
+    if len(readings) < 2 or step <= 0:
+        return [], []
+    end = readings[-1][0]
+    n = int(min(window, end - readings[0][0]) / step + 1e-6)
+    if n <= 0:
+        return [], []
+    start = end - n * step
+    rx, tx = [0.0] * n, [0.0] * n
+    for a, b in zip(readings, readings[1:]):
+        dt = b[0] - a[0]
+        if b[0] <= start or dt <= 0 or dt > gap or b[1] < a[1] or b[2] < a[2]:
+            continue
+        r, t = (b[1] - a[1]) / dt, (b[2] - a[2]) / dt
+        k = max(0, int((a[0] - start) / step))
+        while k < n:
+            lo = start + k * step
+            if lo >= b[0]:
+                break
+            ov = min(lo + step, b[0]) - max(lo, a[0])
+            if ov > 0:
+                rx[k] += r * ov
+                tx[k] += t * ov
+            k += 1
+    return [v / step for v in rx], [v / step for v in tx]
+
+
+class NetHistory:
+    """Every connected network device's byte counters, read from sysfs (two
+    small files, no command, nothing on the network) every SLOW seconds for
+    the daemon's whole life and kept for the last WINDOW seconds, so a speed
+    graph opens on its full minute. While a panel draws it by the second
+    (watch("net", fn, fast=True)) it's read every FAST seconds into the same
+    record. Nothing connected (NetworkManager says which devices are up):
+    no timer, nothing wakes. The readings stay in this process: not in the
+    state files or on D-Bus (that would wake every program that follows
+    them); History("net") on D-Bus asks for them."""
+    SLOW, FAST = 2, 1
+    WINDOW = 60            # the longest any panel draws (kendra, tarang: a minute)
+    KEEP = WINDOW // FAST + 4
+    TYPES = (1, 2)         # NetworkManager's ethernet and Wi-Fi devices
+
+    def __init__(self):
+        self.rings = {}    # interface -> deque of (boottime, rx_bytes, tx_bytes)
+        self.devs = []     # interfaces up now
+        self.wifi_dev = ""
+        self.watchers = []  # [fn, fast]
+        self.timer = 0
+        self.every = 0
+        self._look = 0
+        self.nm = None
+
+    def start(self):
+        self.nm = _source("wifi")
+        if self.nm is not None:
+            self.nm.hooks.append(self._nm_changed)
+        self._nm_changed()
+
+    def _nm_changed(self):
+        # NetworkManager said something: which devices are up, at idle (once
+        # for a burst of signals)
+        if not self._look:
+            self._look = GLib.idle_add(self._devices)
+
+    def _devices(self):
+        self._look = 0
+        devs, wifi = [], ""
+        nm = self.nm
+        if nm is not None and nm.running():
+            for _path, dev in nm.objects(NM + ".Device"):
+                kind = _unpack(dev, "DeviceType", 0)
+                if kind in self.TYPES and _unpack(dev, "State", 0) == 100:
+                    i = _unpack(dev, "IpInterface", "") or _unpack(dev, "Interface", "")
+                    if i and i not in devs:
+                        devs.append(i)
+                        if kind == 2 and not wifi:
+                            wifi = i
+        if devs != self.devs:
+            self.devs = devs
+            if devs and not self.timer:
+                self._read()       # a first reading now: the record starts at once
+        self.wifi_dev = wifi
+        self._schedule()
+        return False
+
+    def _schedule(self):
+        every = (self.FAST if any(f for _fn, f in self.watchers) else self.SLOW) if self.devs else 0
+        if every == self.every and (self.timer or not every):
+            return
+        if self.timer:
+            GLib.source_remove(self.timer)
+            self.timer = 0
+        self.every = every
+        if every:
+            # whole seconds: GLib wakes for these together with every other
+            # timer of the kind in Vyom
+            self.timer = GLib.timeout_add_seconds(every, self._tick)
+
+    def _read(self):
+        now = _boottime()
+        for dev in self.devs:
+            c = net_counters(dev)
+            if c is None:
+                continue
+            ring = self.rings.get(dev)
+            if ring is None:
+                ring = self.rings[dev] = collections.deque(maxlen=self.KEEP)
+            ring.append((now, c[0], c[1]))
+        for dev in [d for d, r in self.rings.items() if d not in self.devs and (not r or now - r[-1][0] > self.WINDOW)]:
+            del self.rings[dev]     # gone for longer than any graph looks back
+
+    def _tick(self):
+        if not self.devs:
+            self.timer = self.every = 0
+            return False
+        self._read()
+        for fn, _fast in list(self.watchers):
+            try:
+                fn(None)
+            except Exception:
+                log.exception("history net watcher")
+        return True
+
+    def watch(self, fn, fast):
+        self.watchers.append([fn, bool(fast)])
+        self._schedule()
+        return ("net", fn)
+
+    def unwatch(self, handle):
+        self.watchers = [w for w in self.watchers if w[0] is not handle[1]]
+        self._schedule()
+
+    def default(self):
+        if self.wifi_dev in self.devs:
+            return self.wifi_dev
+        return self.devs[0] if self.devs else (self.wifi_dev or None)
+
+    def history(self, dev=None, step=1, window=WINDOW):
+        if self.nm is None or not self.nm.running():
+            return None
+        dev = dev or self.default()
+        ring = self.rings.get(dev) if dev else None
+        if dev is None:
+            return None
+        readings = list(ring or ())
+        rx, tx = net_bins(readings, step, window, gap=3 * self.SLOW)
+        last = readings[-1] if readings else None
+        return {"dev": dev, "step": step, "rx": rx, "tx": tx, "up": dev in self.devs,
+                "totals": (last[1], last[2]) if last else None, "devices": list(self.devs)}
+
+
+class BatteryHistory:
+    """The laptop battery's charge over time: UPower's own record, read once
+    (upowerd writes it to disk anyway, so it covers Vyom's restarts and the
+    hours before), then every change UPower signals (the live battery
+    state's own signals: no timer, no file)."""
+    KEEP = 24 * 3600       # seconds kept
+    CHARGING = 1           # UPower's state
+
+    def __init__(self):
+        self.points = collections.deque(maxlen=4000)  # (unix time, percent, charging), oldest first
+        self.asked = None    # the device path UPower's record was asked for
+        self.bat = None
+
+    def start(self):
+        self.bat = _source("battery")
+        if self.bat is not None:
+            self.bat.hooks.append(self._changed)
+            self._changed()
+
+    def _laptop(self):
+        """(path, proxy) of the battery that powers the machine, or None."""
+        for path, p in list(getattr(self.bat, "devices", {}).items()):
+            if _unpack(p, "Type", 0) == 2 and _unpack(p, "PowerSupply", False) and _unpack(p, "IsPresent", True):
+                return path, p
+        return None
+
+    def _changed(self):
+        found = self._laptop()
+        if found is None:
+            return
+        path, p = found
+        if self.asked != path:
+            self.asked = path
+            p.call("GetHistory", GLib.Variant("(suu)", ("charge", 0, 100000)), Gio.DBusCallFlags.NONE, 5000, None,
+                   self._got)
+        pct = _unpack(p, "Percentage", None)
+        if pct is not None:
+            self._add((time.time(), float(pct), _unpack(p, "State", 0) == self.CHARGING))
+
+    def _add(self, pt):
+        last = self.points[-1] if self.points else None
+        if last is None or (last[1], last[2]) != (pt[1], pt[2]):
+            self.points.append(pt)
+
+    def _got(self, proxy, res):
+        try:
+            rows = proxy.call_finish(res).unpack()[0]
+        except GLib.Error as e:
+            log.info("history battery: %s", e.message)
+            return
+        cut = time.time() - self.KEEP
+        old = sorted((float(t), float(v), st == self.CHARGING) for t, v, st in rows if v > 0 or st)
+        keep = [p for p in old if p[0] >= cut]
+        before = [p for p in old if p[0] < cut]
+        mine = [p for p in self.points if not old or p[0] > old[-1][0]]
+        self.points.clear()
+        for p in before[-1:] + keep + mine:
+            self._add(p)
+
+    def history(self, seconds=3 * 3600):
+        pts = list(self.points)
+        cut = time.time() - seconds
+        i = next((k for k, p in enumerate(pts) if p[0] >= cut), len(pts))
+        return pts[max(0, i - 1):]
+
+
+HISTORIES = {"net": NetHistory, "battery": BatteryHistory}
+
+
 SOURCES = {"wifi": Wifi, "bluetooth": Bluetooth, "battery": Battery, "power_profiles": PowerProfiles,
            "volume": Volume, "brightness": Brightness, "units": Units, "theme": Theme}
 
@@ -1054,6 +1382,8 @@ class Exporter:
         if conn is not None:
             props = "".join(f'<property name="{n}" type="s" access="read"/>' for n in SOURCES)
             xml = (f'<node><interface name="{IFACE}"><method name="Get"><arg name="name" type="s" direction="in"/>'
+                   f'<arg name="json" type="s" direction="out"/></method>'
+                   f'<method name="History"><arg name="name" type="s" direction="in"/>'
                    f'<arg name="json" type="s" direction="out"/></method>{props}</interface></node>')
             info = Gio.DBusNodeInfo.new_for_xml(xml).interfaces[0]
             try:
@@ -1076,6 +1406,10 @@ class Exporter:
             if src is not None and name not in self.last:
                 self.publish(src)
             inv.return_value(GLib.Variant("(s)", (self.text(name),)))
+        elif method == "History":
+            # asked for, never pushed: the readings would wake every follower
+            import json
+            inv.return_value(GLib.Variant("(s)", (json.dumps(history(params.unpack()[0]), default=str),)))
 
     def _get(self, _conn, _sender, _path, _iface, prop):
         return GLib.Variant("s", self.text(prop))
@@ -1119,3 +1453,5 @@ def export(conn, folder=None):
         src = _source(name)
         if src is not None:
             src.changed()
+    for name in HISTORIES:      # kept from now on, so a graph opens full
+        _history(name)

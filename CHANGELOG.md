@@ -2,6 +2,11 @@
 
 Newest first. Releases are tags (`vX.Y.Z`).
 
+## Unreleased
+
+- **Graphs open with their history drawn** (ADR 13, `live.history`). The live state keeps the network speed of every connected device (its byte counters in sysfs, read every 2 s for the daemon's whole life, every second while a panel draws them by the second; the last minute kept, about 10 kB a device) and the laptop battery's charge (UPower's own record, read once, then every change its signals bring). Quick settings' Wi-Fi chart and the Wi-Fi panel's speed graph open on the whole last minute instead of starting empty; the battery graph is whole after Vyom restarts. `live.history("net", dev, step, window)` gives speeds in bins of any step (2 s readings fill 1 s bins evenly; a suspend, a disconnect or a counter that goes back is 0, never a spike), `live.watch("net", fn, fast=False)` each new reading; with nothing connected there is no timer. The readings are not in the state files or pushed on D-Bus (they'd wake every program following them): `dev.vayu.Vyom.State.History(name)` returns one as JSON when asked. Measured: Vyom idle went from 0.91 to 1.23 wakeups a second, CPU unchanged at 0.1% of a core (ADR 13).
+- `Source.hooks`: functions told at once of a source's every change (what the histories follow).
+
 ## v0.9.1 -- 2026-11-27
 
 - A command a panel starts in the background (`bluetoothctl scan off` when setu hides) is collected as soon as it exits instead of staying a zombie until Vyom next started a process.

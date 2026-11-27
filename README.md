@@ -222,6 +222,14 @@ nothing wakes. Panels read it (`from vyom import live`: `live.get("wifi")`
 is a dict at once, `live.watch(name, fn)` while they show), so they open on
 the current state without running a command (ADR 12).
 
+Graphs open with their history drawn (ADR 13): `live.history("net")` is
+the last minute of each connected device's speed (its byte counters, read
+every 2 s while something is connected, every second while a panel draws
+them; about 0.3 wakeups a second), `live.history("battery")` the charge
+over the last hours (UPower's own record and every change since). Not in
+the state files or pushed on D-Bus; `History(name)` on
+`dev.vayu.Vyom.State` returns one when asked.
+
 Other programs get the same, from one owner: the D-Bus object
 `/dev/vayu/Vyom/State` on `dev.vayu.Vyom` (interface `dev.vayu.Vyom.State`:
 a JSON string property per source, `PropertiesChanged`, `Get(name)`), and
