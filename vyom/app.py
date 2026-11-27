@@ -25,7 +25,7 @@ gi.require_version("Graphene", "1.0")
 gi.require_version("Gtk4LayerShell", "1.0")
 from gi.repository import Gdk, Gio, GLib, Gtk  # noqa: E402
 
-from . import VERSION, config, util  # noqa: E402
+from . import VERSION, config, live, util  # noqa: E402
 from . import log as vlog  # noqa: E402
 from .panel import Panel, set_keycap_colours  # noqa: E402
 from .plugin import Hint, Plugin, Row  # noqa: E402
@@ -132,6 +132,9 @@ class Vyom(Gtk.Application):
         self.plugins, self.panels, self.skipped = {}, {}, {}
         self.order = []
         self.last_args = {}
+        self.warm_name = None   # the warm-up's panel (the launcher): always kept
+        self.uses = None        # {tool: [unix times it opened]}, the last week (keeps)
+        self.uses_dirty = False
         for name, ptype, cb in (("open", "s", self.on_open), ("dmenu", "s", self.on_dmenu),
                                 ("quick", None, lambda *_: self.open("kendra", [])),
                                 ("close", None, lambda *_: self.close_all()),
@@ -214,6 +217,10 @@ class Vyom(Gtk.Application):
         for name, why in self.skipped.items():
             log.info("plugin %s skipped: %s", name, why)
 
+    def do_shutdown(self):
+        live.stop()     # its helpers (pactl subscribe) go with Vyom
+        Gtk.Application.do_shutdown(self)
+
     def do_command_line(self, cmdline):
         args = cmdline.get_arguments()[1:]
         if (args[0] if args else "daemon") == "daemon":
@@ -223,6 +230,10 @@ class Vyom(Gtk.Application):
     def prewarm(self):
         """Build every panel now, so the first key press only shows one."""
         t0 = time.monotonic()
+        # The live state (ADR 12): every source starts now and stays, panels
+        # read it, other programs get it on D-Bus and in $XDG_RUNTIME_DIR.
+        if self.conf.get("vyom", {}).get("live", True) is not False:
+            live.export(self.get_dbus_connection())
         for name in list(self.plugins):
             self.panel(name)
         log.info("built %d panels in %d ms", len(self.panels), (time.monotonic() - t0) * 1000)
@@ -256,7 +267,52 @@ class Vyom(Gtk.Application):
         by every panel. [vyom] warm_up = false turns it off."""
         if not self.order or self.conf.get("vyom", {}).get("warm_up", True) is False:
             return
-        self.panel("dvara" if "dvara" in self.plugins else self.order[0]).warm_up()
+        self.warm_name = "dvara" if "dvara" in self.plugins else self.order[0]
+        self.panel(self.warm_name).warm_up()
+
+    # ------------------------------------------------- which panels stay warm
+    WEEK = 7 * 86400
+
+    def keeps(self, name):
+        """True when a hidden panel keeps its surface for good (ADR 11):
+        `keep` in its [plugin.<name>] (true or false wins), the warm-up's
+        panel (the launcher), one named in [vyom] keep, or one opened at
+        least [vyom] keep_often times (default 5, 0: off) in the last week."""
+        own = self.conf.get("plugin", {}).get(name, {}).get("keep")
+        if isinstance(own, bool):
+            return own
+        conf = self.conf.get("vyom", {})
+        if name == self.warm_name or name in (conf.get("keep") or []):
+            return True
+        often = conf.get("keep_often", 5)
+        if not isinstance(often, int) or isinstance(often, bool) or often <= 0:
+            return False
+        cut = time.time() - self.WEEK
+        return sum(1 for t in self.load_uses().get(name, ()) if t > cut) >= often
+
+    def load_uses(self):
+        if self.uses is None:
+            raw = util.load_state("vyom-uses", {})
+            self.uses = {k: [t for t in v if isinstance(t, (int, float))][-64:]
+                         for k, v in (raw.items() if isinstance(raw, dict) else ()) if isinstance(v, list)}
+        return self.uses
+
+    def note_use(self, name):
+        """Counts an opening (in memory; written when the panel hides)."""
+        uses = self.load_uses()
+        cut = time.time() - self.WEEK
+        uses[name] = [t for t in uses.get(name, []) if t > cut][-63:] + [int(time.time())]
+        self.uses_dirty = True
+
+    def save_uses(self):
+        """Called after a panel hides, at idle: never on the way to a frame."""
+        if self.uses_dirty and self.uses is not None:
+            self.uses_dirty = False
+            try:
+                util.save_state("vyom-uses", self.uses)
+            except OSError:
+                pass
+        return False
 
     def panel(self, name):
         if name not in self.panels:
@@ -281,6 +337,7 @@ class Vyom(Gtk.Application):
             return
         self.close_all()
         self.last_args[name] = args
+        self.note_use(name)
         t0 = time.monotonic()
         p.show_panel(args)
         self.log_first_paint(p, name, t0)

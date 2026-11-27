@@ -35,6 +35,7 @@ log = logging.getLogger("vyom")
 # keybind: Vyom/every panel | F11 | Toggle fullscreen (each tool remembers it)
 # keybind: Vyom/every panel | Esc | Close the panel
 
+RELEASE_AFTER = 600   # seconds a rarely used hidden panel keeps its surface (ADR 11)
 FULL_GAP = 14   # fullscreen: the gap left at each edge of the screen, in pixels
 
 MODS = {"shift": Gdk.ModifierType.SHIFT_MASK, "ctrl": Gdk.ModifierType.CONTROL_MASK,
@@ -669,29 +670,37 @@ class Panel(Gtk.ApplicationWindow):
             self.hide()
             self.plugin.closed()
             self.release_soon()
+            if getattr(self.app, "uses_dirty", False):
+                GLib.idle_add(self.app.save_uses, priority=GLib.PRIORITY_LOW)
 
     def release_soon(self):
         """A hidden panel keeps its surface: the window the compositor
         holds and, with GTK's GPU renderers, its swapchain, 3-4 full-size
-        buffers in graphics memory (about 10 MB a panel; 90 MB with every
-        tool opened once, measured). [vyom] release_after seconds after
-        it hides (default 30; false: never) the panel lets go of it
-        (unrealize: every widget stays, only the surface goes) and the C
-        heap is trimmed. Opening it again makes a new one, 10-20 ms more
-        than reopening a kept one; opened again sooner, nothing changes."""
+        buffers in graphics memory (about 10 MB a panel, measured).
+        Reopening a kept one is quickest; one that let go makes a new
+        surface, 10-25 ms more (ADR 11). So only a panel you rarely open
+        lets go, and only after [vyom] release_after seconds hidden
+        (default 600; false: never): never the launcher (the warm-up's
+        panel), one in [vyom] keep or with `keep = true` in its
+        [plugin.<name>], or one opened [vyom] keep_often times (default 5)
+        in the last week. A kept panel sets no timer at all."""
         if self.release_id:
             GLib.source_remove(self.release_id)
             self.release_id = 0
-        after = self.app.conf.get("vyom", {}).get("release_after", 30)
+        after = self.app.conf.get("vyom", {}).get("release_after", RELEASE_AFTER)
         if after is True:
-            after = 30
+            after = RELEASE_AFTER
         if after is False or not isinstance(after, (int, float)) or after < 0:
             return
-        self.release_id = GLib.timeout_add(max(1, int(after * 1000)), self._release)
+        if self.app.keeps(self.plugin.name):
+            return
+        self.release_id = GLib.timeout_add_seconds(max(1, int(after)), self._release)
 
     def _release(self):
         self.release_id = 0
         if self.get_visible() or getattr(self, "warming", False) or self.app.panels.get(self.plugin.name) is not self:
+            return False
+        if self.app.keeps(self.plugin.name):   # opened often since it hid
             return False
         if self.get_realized():
             self.unrealize()
@@ -739,9 +748,8 @@ class Panel(Gtk.ApplicationWindow):
         LayerShell.set_layer(self, LayerShell.Layer.OVERLAY)
         LayerShell.set_keyboard_mode(self, LayerShell.KeyboardMode.EXCLUSIVE)
         self.place()
-        # What the warm-up made that's worth keeping (GTK's pipelines,
-        # glyph and icon caches) belongs to the renderer's device, not this
-        # surface: releasing the surface keeps the first opening instant.
+        # The warm-up's panel is the launcher: it keeps its surface
+        # (app.keeps), so every opening, the first too, reuses it.
         self.release_soon()
 
     # ------------------------------------------------------------ searching

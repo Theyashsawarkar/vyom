@@ -200,11 +200,38 @@ width = 900                  # every panel opens at this size (times scale = 1.2
 height = 520
 opacity = 0.72               # panel background: 1 solid, lower = more glass
 warm_up = true               # draw the launcher once off screen at start, so the first opening is instant
-release_after = 30           # seconds a hidden panel keeps its surface (graphics memory); false: always
+release_after = 600          # seconds a rarely used hidden panel keeps its surface (graphics memory); false: always
+keep = ["dvara", "ganit"]    # panels that always keep theirs (the launcher always does)
+keep_often = 5               # ...and any opened this many times in the last week (0: off)
+live = true                  # publish the live system state for other programs (ADR 12); panels use it either way
 css = ["~/.local/state/varna/vyom.css"]   # more stylesheets, loaded last (a theme's colours)
 
 [plugin.tarang]              # each tool's settings: see its README
 hotspot_command = "vayu-hotspot"
+keep = true                  # in any tool's section: always keep (true) or may let go (false)
+```
+
+### Live state
+
+Vyom follows the system once, for its whole life, by the signals its
+daemons send anyway: NetworkManager (Wi-Fi, the hotspot, wired), BlueZ
+(the adapter, every device and its battery), UPower, power-profiles-daemon,
+the sound server (`pactl subscribe`), the backlight (udev), systemd user
+units and the GNOME colour scheme. Nothing polls; with nothing changing,
+nothing wakes. Panels read it (`from vyom import live`: `live.get("wifi")`
+is a dict at once, `live.watch(name, fn)` while they show), so they open on
+the current state without running a command (ADR 12).
+
+Other programs get the same, from one owner: the D-Bus object
+`/dev/vayu/Vyom/State` on `dev.vayu.Vyom` (interface `dev.vayu.Vyom.State`:
+a JSON string property per source, `PropertiesChanged`, `Get(name)`), and
+`$XDG_RUNTIME_DIR/vayu/state/<name>.json`, replaced by an atomic rename only
+when it changes. Sources: `wifi` (without the scan list), `bluetooth`,
+`battery`, `power_profiles`, `volume`, `brightness`, `units`, `theme`.
+
+```sh
+gdbus call --session -d dev.vayu.Vyom -o /dev/vayu/Vyom/State -m dev.vayu.Vyom.State.Get battery
+cat $XDG_RUNTIME_DIR/vayu/state/wifi.json
 ```
 
 `~/.config/vyom/style.css` loads after the tools' styles, to restyle anything;

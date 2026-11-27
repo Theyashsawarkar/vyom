@@ -13,10 +13,18 @@
 # desktop show through (0.3 to 1):
 # opacity = 0.72
 # css = ["~/.local/state/varna/vyom.css"]   # more stylesheets, loaded last
-# Seconds a hidden panel keeps its surface (its buffers in graphics
-# memory, ~10 MB a panel) before letting go of it; opening it after that
-# takes 10-20 ms more. false keeps every surface:
-# release_after = 30
+# A hidden panel keeps its surface (its buffers in graphics memory, ~10
+# MB a panel), so reopening it is instant. Only a rarely used one lets go,
+# after release_after seconds hidden (reopening it then takes 10-25 ms
+# more); false keeps every surface. Never released: the launcher (the
+# warm-up's panel), the panels in keep, any tool with `keep = true` in its
+# [plugin.<name>], and any opened keep_often times in the last week:
+# release_after = 600
+# keep = ["dvara", "ganit", "smriti", "bhava", "kendra"]
+# keep_often = 5
+# Publish the live system state (ADR 12) for other programs, on D-Bus and
+# in $XDG_RUNTIME_DIR/vayu/state (panels use it either way); false: don't:
+# live = true
 
 # Each tool's own settings live under [plugin.<name>]; its README lists
 # them. A few examples:

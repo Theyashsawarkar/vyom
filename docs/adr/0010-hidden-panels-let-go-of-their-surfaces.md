@@ -1,6 +1,6 @@
 # 10. Hidden panels let go of their surfaces
 
-**Status:** Accepted  
+**Status:** Accepted; when it applies: ADR 11  
 **Date:** 2026-11-27
 
 ## Context

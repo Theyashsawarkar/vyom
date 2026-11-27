@@ -27,10 +27,10 @@
 <p class="lead">Beautiful, keyboard-driven panels for Wayland: the runtime behind Vayu&#x27;s launcher and system panels.</p>
 <figure class="shloka"><p lang="sa">यथाकाशस्थितो नित्यं वायुः सर्वत्रगो महान् ।<br>तथा सर्वाणि भूतानि मत्स्थानीत्युपधारय ॥</p><figcaption>As the great wind, moving everywhere, always rests in the sky, so all things rest in me. <cite>Bhagavad Gītā 9.6</cite></figcaption></figure>
 <div class="cta"><a class="btn primary" href="#install">Install</a><a class="btn" href="https://github.com/Theyashsawarkar/vyom">Source on GitHub</a><a class="btn" href="changelog.html">What's new in v0.8.0</a></div>
-<div class="meta"><span><b>v0.8.0</b> latest</span><span><b>29</b> releases</span><span><b>10</b> decisions recorded</span><span><b>MIT</b> license</span></div>
+<div class="meta"><span><b>v0.8.0</b> latest</span><span><b>29</b> releases</span><span><b>12</b> decisions recorded</span><span><b>MIT</b> license</span></div>
 </header>
 <figure class="shot"><img src="assets/screenshots/dvara.webp" alt="dvara, the app launcher: search on top, apps on the left, the selected app's preview and actions on the right" fetchpriority="high"></figure>
-<div class="wrap"><aside class="toc"><b>On this page</b><a class="l2" href="#the-tools">The tools</a><a class="l2" href="#install">Install</a><a class="l2" href="#usage">Usage</a><a class="l3" href="#vim-keys">Vim keys</a><a class="l2" href="#configuration">Configuration</a><a class="l2" href="#writing-a-tool">Writing a tool</a><a class="l3" href="#vim-keys-in-a-tool">Vim keys in a tool</a><a class="l2" href="#troubleshooting">Troubleshooting</a><a class="l2" href="#contributing">Contributing</a><a class="l2" href="#license">License</a></aside><article>
+<div class="wrap"><aside class="toc"><b>On this page</b><a class="l2" href="#the-tools">The tools</a><a class="l2" href="#install">Install</a><a class="l2" href="#usage">Usage</a><a class="l3" href="#vim-keys">Vim keys</a><a class="l2" href="#configuration">Configuration</a><a class="l3" href="#live-state">Live state</a><a class="l2" href="#writing-a-tool">Writing a tool</a><a class="l3" href="#vim-keys-in-a-tool">Vim keys in a tool</a><a class="l2" href="#troubleshooting">Troubleshooting</a><a class="l2" href="#contributing">Contributing</a><a class="l2" href="#license">License</a></aside><article>
 <p align="center">
   <img alt="kendra, quick settings" src="assets/screenshots/kendra.webp" width="32%">
   <img alt="bhava, the emoji picker" src="assets/screenshots/bhava.webp" width="66%">
@@ -84,11 +84,20 @@ width = 900                  # every panel opens at this size (times scale = 1.2
 height = 520
 opacity = 0.72               # panel background: 1 solid, lower = more glass
 warm_up = true               # draw the launcher once off screen at start, so the first opening is instant
-release_after = 30           # seconds a hidden panel keeps its surface (graphics memory); false: always
+release_after = 600          # seconds a rarely used hidden panel keeps its surface (graphics memory); false: always
+keep = [&quot;dvara&quot;, &quot;ganit&quot;]    # panels that always keep theirs (the launcher always does)
+keep_often = 5               # ...and any opened this many times in the last week (0: off)
+live = true                  # publish the live system state for other programs (ADR 12); panels use it either way
 css = [&quot;~/.local/state/varna/vyom.css&quot;]   # more stylesheets, loaded last (a theme&#x27;s colours)
 
 [plugin.tarang]              # each tool&#x27;s settings: see its README
-hotspot_command = &quot;vayu-hotspot&quot;</code></pre>
+hotspot_command = &quot;vayu-hotspot&quot;
+keep = true                  # in any tool&#x27;s section: always keep (true) or may let go (false)</code></pre>
+<h3 id="live-state"><a class="anchor" href="#live-state">#</a>Live state</h3>
+<p>Vyom follows the system once, for its whole life, by the signals its daemons send anyway: NetworkManager (Wi-Fi, the hotspot, wired), BlueZ (the adapter, every device and its battery), UPower, power-profiles-daemon, the sound server (<code>pactl subscribe</code>), the backlight (udev), systemd user units and the GNOME colour scheme. Nothing polls; with nothing changing, nothing wakes. Panels read it (<code>from vyom import live</code>: <code>live.get(&quot;wifi&quot;)</code> is a dict at once, <code>live.watch(name, fn)</code> while they show), so they open on the current state without running a command (ADR 12).</p>
+<p>Other programs get the same, from one owner: the D-Bus object <code>/dev/vayu/Vyom/State</code> on <code>dev.vayu.Vyom</code> (interface <code>dev.vayu.Vyom.State</code>: a JSON string property per source, <code>PropertiesChanged</code>, <code>Get(name)</code>), and <code>$XDG_RUNTIME_DIR/vayu/state/&lt;name&gt;.json</code>, replaced by an atomic rename only when it changes. Sources: <code>wifi</code> (without the scan list), <code>bluetooth</code>, <code>battery</code>, <code>power_profiles</code>, <code>volume</code>, <code>brightness</code>, <code>units</code>, <code>theme</code>.</p>
+<pre class="code" data-lang="sh"><code>gdbus call --session -d dev.vayu.Vyom -o /dev/vayu/Vyom/State -m dev.vayu.Vyom.State.Get battery
+cat $XDG_RUNTIME_DIR/vayu/state/wifi.json</code></pre>
 <p><code>~/.config/vyom/style.css</code> loads after the tools' styles, to restyle anything; the <code>css</code> files load after that. Colours are named (<code>@base</code>, <code>@text</code>, <code>@accent</code>, <code>@mauve</code>...: Catppuccin Mocha by default), so a theme only has to redefine them: <a href="https://github.com/Theyashsawarkar/varna">varna</a> writes such a file.</p>
 <h2 id="writing-a-tool"><a class="anchor" href="#writing-a-tool">#</a>Writing a tool</h2>
 <p>A tool is a directory with a <code>plugin.toml</code> and a Python package of the same name exporting a <code>Plugin</code> class:</p>
