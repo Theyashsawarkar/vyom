@@ -167,6 +167,11 @@ def _source(name):
 
 class Source:
     cache = True     # keep the last snapshot until something changes
+    # Published at most once per this many seconds (the first change of a
+    # burst at once, the last when it settles). Sources you change by hand,
+    # a step at a time (volume, brightness), publish sooner: a bar showing
+    # them must follow your scrolling.
+    publish_every = 0.25
 
     def __init__(self):
         self.watchers = []
@@ -225,9 +230,9 @@ class Source:
     def _notify(self):
         self._pending = 0
         if _exporter is not None and getattr(self, "_export", True):
-            # at most four times a second: a burst (a scan starting) is
-            # published once it settles, not change by change
-            wait = getattr(self, "_published", 0) + 0.25 - time.monotonic()
+            # at most four times a second (publish_every): a burst (a scan
+            # starting) is published once it settles, not change by change
+            wait = getattr(self, "_published", 0) + self.publish_every - time.monotonic()
             if wait > 0:
                 if not getattr(self, "_later", 0):
                     self._later = GLib.timeout_add(int(wait * 1000) + 1, self._publish_later)
@@ -872,11 +877,37 @@ def stop():
 
 
 # ------------------------------------------------------------------ volume
+def sink_summary(default, sinks):
+    """The default output from `pactl get-default-sink` and `pactl -f json
+    list sinks`: what it is (description; bus, API, form factor and active
+    port, so a bar can tell earbuds from a TV), its volume (the channels'
+    average, in pactl's percent, the same scale as wpctl's) and whether it's
+    muted. {"sink": ""} when there's no output."""
+    sink = next((x for x in sinks if isinstance(x, dict) and x.get("name") == default), None)
+    if sink is None:
+        return {"sink": ""}
+    vols = []
+    for v in (sink.get("volume") or {}).values():
+        try:
+            vols.append(int(str(v["value_percent"]).rstrip("%")))
+        except (KeyError, TypeError, ValueError):
+            pass
+    p = sink.get("properties") or {}
+    return {"sink": default, "device": sink.get("description") or "",
+            "volume": round(sum(vols) / len(vols)) if vols else 0, "muted": bool(sink.get("mute")),
+            "bus": p.get("device.bus") or "", "api": p.get("device.api") or "",
+            "form_factor": p.get("device.form-factor") or "", "port": sink.get("active_port") or ""}
+
+
 class Volume(Source):
     """The default output through `pactl subscribe` (PipeWire's pulse server
     or PulseAudio): one process that only speaks when something changes;
-    then the volume is read again (wpctl, or pactl)."""
+    then the output is read again (`pactl -f json list sinks`, and the
+    default's name when the server changed: one or two runs side by side,
+    ~10 ms). Published at once (publish_every 0): the bar's sound capsule
+    follows it while you scroll."""
     name = "volume"
+    publish_every = 0
 
     def start(self):
         self.snap = None
@@ -884,7 +915,9 @@ class Volume(Source):
         self.reading = False
         self.again = False
         self.need_name = True
+        self.default = ""
         self.fails = 0
+        self.json = True     # pactl -f json (pactl 16 and later)
         if shutil.which("pactl"):
             self._spawn()
 
@@ -894,8 +927,10 @@ class Volume(Source):
                                     Gio.SubprocessFlags.STDERR_SILENCE)
         except GLib.Error:
             return
+        self.started = time.monotonic()
         self.lines = Gio.DataInputStream.new(self.proc.get_stdout_pipe())
         self.lines.read_line_async(GLib.PRIORITY_DEFAULT, None, self._line)
+        self.need_name = True
         self.read()
 
     def _line(self, stream, res):
@@ -903,17 +938,20 @@ class Volume(Source):
             line, _ = stream.read_line_finish_utf8(res)
         except GLib.Error:
             line = None
-        if line is None:                 # pactl ended (the sound server restarted)
+        if line is None:                 # pactl ended (the sound server restarted, or is gone)
             if self.proc in _children:
                 _children.remove(self.proc)
             self.proc = None
-            self.fails += 1
-            if self.fails <= 5:
-                GLib.timeout_add_seconds(3 * self.fails, lambda: (self._spawn(), False)[1])
+            # ran a while: the server restarted, come back quickly; else back
+            # off (3, 6, 9... s, up to a minute), never giving up
+            self.fails = 1 if time.monotonic() - self.started > 60 else self.fails + 1
+            GLib.timeout_add_seconds(min(3 * self.fails, 60), lambda: (self._spawn(), False)[1])
+            self.need_name = True
+            self.read()                  # what it is now (no output, while the server is away)
             return
-        self.fails = 0
-        # "Event 'change' on sink #56", "Event 'change' on server #-1"; not sink-input (a stream)
-        if re.search(r"on (sink|server) #", line):
+        # "Event 'change' on sink #56", "Event 'change' on server #-1", a
+        # card (a Bluetooth profile, a port); not sink-input (an app's stream)
+        if re.search(r"on (?:sink|card) #|on server\b", line):
             if "server" in line or "'new'" in line or "'remove'" in line:
                 self.need_name = True
             self.read()
@@ -939,49 +977,72 @@ class Volume(Source):
             self.again = True
             return
         self.reading = True
-        wp = shutil.which("wpctl")
+        if not self.json:
+            return self._read_plain()
+        import json
+        answers = {}
+        need_name = self.need_name
+        self.need_name = False
+
+        def got(key, out):
+            answers[key] = out
+            if len(answers) < (2 if need_name else 1):
+                return
+            if need_name:
+                self.default = answers["default"].strip()
+            try:
+                sinks = json.loads(answers["sinks"]) if answers["sinks"].strip() else []
+            except ValueError:
+                # a pactl without -f json (before 16): ask the plain way from now on
+                self.json = False
+                self.reading = False
+                self.need_name = True
+                return self.read()
+            self.snap = sink_summary(self.default, sinks if isinstance(sinks, list) else [])
+            if not self.default or not answers["sinks"].strip():
+                self.need_name = True    # no server or no output: ask its name again next time
+            self._finish()
+        self._run(["pactl", "-f", "json", "list", "sinks"], lambda out: got("sinks", out))
+        if need_name:
+            self._run(["pactl", "get-default-sink"], lambda out: got("default", out))
+
+    def _finish(self):
+        self.reading = False
+        self.changed()
+        if self.again:
+            self.again = False
+            self.read()
+
+    def _read_plain(self):
+        """An old pactl: the volume, mute and description in three runs."""
         snap = dict(self.snap or {})
 
-        def finish():
-            self.reading = False
-            self.snap = snap
-            self.changed()
-            if self.again:
-                self.again = False
-                self.read()
-
-        def got_name(out):
-            m = re.search(r'node\.description = "([^"]+)"', out) or re.search(r'node\.nick = "([^"]+)"', out) \
-                or re.search(r"Description: (.+)", out)
-            snap["device"] = m.group(1).strip() if m else snap.get("device", "")
-            self.need_name = False
-            finish()
-
         def got_volume(out):
-            if wp:
-                m = re.search(r"([\d.]+)", out)
-                snap["volume"], snap["muted"] = (round(float(m.group(1)) * 100) if m else 0), "MUTED" in out
-            else:
-                m = re.search(r"(\d+)%", out)
-                snap["volume"] = int(m.group(1)) if m else 0
-            if not wp:
-                self._run(["pactl", "get-sink-mute", "@DEFAULT_SINK@"],
-                          lambda o: (snap.__setitem__("muted", "yes" in o), name_or_finish()))
-            else:
-                name_or_finish()
+            m = re.search(r"(\d+)%", out)
+            snap["volume"] = int(m.group(1)) if m else 0
+            self._run(["pactl", "get-sink-mute", "@DEFAULT_SINK@"],
+                      lambda o: (snap.__setitem__("muted", "yes" in o), got_mute()))
 
-        def name_or_finish():
-            if self.need_name and wp:
-                self._run(["wpctl", "inspect", "@DEFAULT_AUDIO_SINK@"], got_name)
-            else:
-                finish()
-        if wp:
-            self._run(["wpctl", "get-volume", "@DEFAULT_AUDIO_SINK@"], got_volume)
-        else:
-            self._run(["pactl", "get-sink-volume", "@DEFAULT_SINK@"], got_volume)
+        def got_mute():
+            self._run(["pactl", "info"], got_info)
+
+        def got_info(out):
+            m = re.search(r"Default Sink: (.+)", out)
+            snap["sink"] = m.group(1).strip() if m else ""
+            if not snap["sink"]:
+                snap.clear()
+                snap["sink"] = ""
+            self.snap = snap
+            self._finish()
+        self._run(["pactl", "get-sink-volume", "@DEFAULT_SINK@"], got_volume)
 
     def snapshot(self):
         return dict(self.snap) if self.snap and "volume" in self.snap else None
+
+    def public(self):
+        """None while nothing follows the sound server (no pactl, or not
+        yet read); {"sink": ""} when there's no output; else the summary."""
+        return dict(self.snap) if self.snap else None
 
 
 # -------------------------------------------------------------- brightness
@@ -990,6 +1051,9 @@ class Brightness(Source):
     kernel's uevent on every change (udev, through GUdev) tells watchers."""
     name = "brightness"
     cache = False    # two small reads: always current, even without udev
+    # a key held down steps it ~30 times a second: published at most 20
+    # times, the first and the last step at once
+    publish_every = 0.05
 
     def start(self):
         self.udev = None

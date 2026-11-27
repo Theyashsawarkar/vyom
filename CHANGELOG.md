@@ -4,6 +4,9 @@ Newest first. Releases are tags (`vX.Y.Z`).
 
 ## Unreleased
 
+- **Sound and light are published at once** (ADR 14): the volume source is published as soon as it changes (was at most four times a second), the backlight up to 20 times a second, so a bar or a phone following `dev.vayu.Vyom.State` keeps up with your scrolling. Each source says how often it may be published (`Source.publish_every`).
+- **The volume says what the output is**: it's read with `pactl -f json list sinks` (one run per step; the default's name only when the server changed), and its state adds `sink`, `bus`, `api`, `form_factor` and `port` to `device`, `volume` and `muted`, so Vayu's bar can draw earbuds, a speaker or a TV from it instead of following the sound server itself. `{"sink": ""}`: no output. A `pactl` older than 16 (no JSON) is read the plain way.
+- The volume source follows the sound server again after it goes away for good (3, 6, 9... s, up to a minute), instead of giving up after five tries, and shows no output while it's away.
 - CI installs PyGObject with GTK 4, cairo and gtk4-layer-shell from apt (and runs the system Python) so the tests that import GTK run there too; they failed on GitHub with `No module named 'gi'` since they were added.
 
 ## v0.10.0 -- 2026-11-27

@@ -236,6 +236,13 @@ a JSON string property per source, `PropertiesChanged`, `Get(name)`), and
 `$XDG_RUNTIME_DIR/vayu/state/<name>.json`, replaced by an atomic rename only
 when it changes. Sources: `wifi` (without the scan list), `bluetooth`,
 `battery`, `power_profiles`, `volume`, `brightness`, `units`, `theme`.
+A source is published at most four times a second, except the two you
+change a step at a time (ADR 14): `volume` at once (the default output:
+`sink`, `device`, `volume`, `muted`, and `bus`, `api`, `form_factor`,
+`port` to tell earbuds from a TV; `{"sink": ""}` with no output, `null`
+while nothing follows the sound server) and `brightness` up to 20 times a
+second. Vayu's bar capsule and ekatva's phone panel follow these instead
+of watching the sound server and the backlight themselves.
 
 ```sh
 gdbus call --session -d dev.vayu.Vyom -o /dev/vayu/Vyom/State -m dev.vayu.Vyom.State.Get battery
