@@ -17,7 +17,10 @@ nothing wakes. Reading it is a look at memory.
 Sources (each starts on its first get() or watch(), then keeps running):
 
   wifi           NetworkManager: radio, the Wi-Fi device, access points,
-                 the network you're on, addresses, saved networks, wired
+                 the network you're on, addresses, saved networks, wired;
+                 "connections": every active connection, whatever its kind
+                 (Wi-Fi, Ethernet, USB tethering, mobile, Bluetooth, VPN,
+                 WireGuard), the primary one first (Vyom 0.12)
   bluetooth      BlueZ: the adapter and every device (battery, connected...)
   battery        UPower: the display device and every device with a battery
   power_profiles power-profiles-daemon: the active profile and the choices
@@ -39,7 +42,8 @@ Graphs draw what live has kept since the daemon started (Vyom 0.10):
     live.history("battery")        # the charge over the last hours
     h = live.watch("net", fn, fast=True)   # fn(None) on each new reading
 
-  net            each connected device's byte counters (sysfs, no command),
+  net            each connected device's byte counters (sysfs, no command;
+                 every kind of connection),
                  read every 2 s for the daemon's life (every second while a
                  panel draws them), the last minute kept: nothing connected,
                  no timer
@@ -71,6 +75,10 @@ import time
 from gi.repository import Gio, GLib
 
 log = logging.getLogger("vyom.state")
+# where the network devices' counters, speed and duplex are read; the
+# headless tests point it at made-up ones (a fake NetworkManager's devices
+# have no sysfs of their own)
+SYS_NET = os.environ.get("VYOM_SYS_NET") or "/sys/class/net"
 
 _sources = {}
 
@@ -126,8 +134,11 @@ def history(name, **kw):
           {"dev": "wlan0", "step": 1, "rx": [bytes/s...], "tx": [...],
            "totals": (rx_bytes, tx_bytes), "devices": [...]}, oldest first,
           the last `window` seconds in `step`-second bins (fewer while
-          there's less, none for a device that isn't up); dev None: the
-          Wi-Fi device while it's connected, else the first device up.
+          there's less, none for a device that isn't up), for any device
+          an active connection runs through (Ethernet, Wi-Fi, USB, a
+          modem, Bluetooth, WireGuard: Vyom 0.12); dev None: the primary
+          connection's device, else the Wi-Fi device while it's
+          connected, else the first device up.
           None without NetworkManager (a tool samples by itself then).
       history("battery", seconds=10800)
           [(unix time, percent, charging)]: UPower's own record (on disk,
@@ -418,7 +429,8 @@ class Wifi(_ObjectManager):
             ssid = bytes(w.get("ssid") or b"").decode("utf-8", "replace") if w else ""
             self.saved[path] = {"name": c.get("id", ""), "uuid": c.get("uuid", ""), "type": c.get("type", ""),
                                 "ssid": ssid, "mode": w.get("mode", ""), "timestamp": c.get("timestamp", 0),
-                                "metered": METERED.get(c.get("metered", 0), "unknown"), "path": path}
+                                "metered": METERED.get(c.get("metered", 0), "unknown"), "path": path,
+                                "server": vpn_server(s), "apn": (s.get("gsm") or {}).get("apn", "")}
             self.changed()
         p.call("GetSettings", None, Gio.DBusCallFlags.NONE, 5000, None, done)
 
@@ -482,7 +494,78 @@ class Wifi(_ObjectManager):
             snap["hotspot"] = {"on": True, "ssid": conn["ssid"], "name": conn["name"]} \
                 if conn and conn.get("mode") == "ap" else {"on": False}
         snap["saved"] = [dict(v) for v in list(self.saved.values()) if v["type"] == "802-11-wireless"]
+        snap["connections"] = self._connections(root, acs)
+        snap["primary"] = next((c["uuid"] for c in snap["connections"] if c["primary"]), "")
         return snap
+
+    def _connections(self, root, acs):
+        """Every active connection worth showing (Vyom 0.12), whatever it
+        runs over: Wi-Fi, Ethernet, USB tethering, mobile broadband,
+        Bluetooth, VPN and WireGuard; the one carrying the default route
+        (NetworkManager's PrimaryConnection) first, a VPN right after the
+        connection it rides on. Docker's bridges, loopback and the like are
+        left out."""
+        primary = _unpack(root, "PrimaryConnection", "/")
+        by_uuid = {v["uuid"]: v for v in list(self.saved.values())}
+        out = []
+        for path, ac in acs.items():
+            devs = [self.iface(d, NM + ".Device") for d in _unpack(ac, "Devices", []) or []]
+            dev = next((d for d in devs if d is not None), None)
+            dpath = dev.get_object_path() if dev is not None else ""
+            iface = _unpack(dev, "IpInterface", "") or _unpack(dev, "Interface", "")
+            conf = by_uuid.get(_unpack(ac, "Uuid", "")) or {}
+            vpn = bool(_unpack(ac, "Vpn", False))
+            kind = conn_kind(_unpack(ac, "Type", ""), _unpack(dev, "DeviceType", 0), _unpack(dev, "Driver", ""),
+                             iface, bool(_unpack(ac, "StateFlags", 0) & 0x80), conf.get("mode", ""), vpn)
+            if kind is None:
+                continue
+            ip4p = _unpack(ac, "Ip4Config", "/")
+            ip6p = _unpack(ac, "Ip6Config", "/")
+            if not vpn:     # a VPN's addresses are its own (on the active connection); a device's on it
+                ip4p = ip4p if ip4p not in ("", "/") else _unpack(dev, "Ip4Config", "/")
+                ip6p = ip6p if ip6p not in ("", "/") else _unpack(dev, "Ip6Config", "/")
+            ip4, gw4, dns4 = self._ip(ip4p, NM + ".IP4Config")
+            ip6, gw6, dns6 = self._ip(ip6p, NM + ".IP6Config")
+            c = {"name": _unpack(ac, "Id", ""), "uuid": _unpack(ac, "Uuid", ""), "type": kind[0], "label": kind[1],
+                 "device": iface, "device_path": dpath, "vpn": kind[0] in ("vpn", "wireguard"),
+                 "state": {1: "activating", 2: "activated", 3: "deactivating"}.get(_unpack(ac, "State", 0), "unknown"),
+                 "primary": path == primary, "default": bool(_unpack(ac, "Default", False)),
+                 "default6": bool(_unpack(ac, "Default6", False)), "ip4": ip4, "gateway": gw4, "ip6": ip6,
+                 "gateway6": gw6, "dns": dns4 + dns6, "driver": _unpack(dev, "Driver", ""),
+                 "mac": "", "speed": 0, "duplex": "", "metered": conf.get("metered", "unknown"),
+                 "path": path, "base_device": dpath if vpn else ""}
+            dtype = _unpack(dev, "DeviceType", 0)
+            if dtype == 2:
+                wl = self.iface(dpath, NM + ".Device.Wireless")
+                c["mac"] = _unpack(wl, "HwAddress", "") or _unpack(dev, "HwAddress", "")
+                c["bitrate"] = _unpack(wl, "Bitrate", 0) // 1000
+                c["speed"] = c["bitrate"]
+                ap = self._ap(_unpack(wl, "ActiveAccessPoint", "/"), _unpack(wl, "ActiveAccessPoint", "/"))
+                if ap:
+                    c.update({"ssid": ap["ssid"], "strength": ap["strength"], "freq": ap["freq"],
+                              "channel": ap["channel"], "security": ap["security"], "bssid": ap["bssid"]})
+            elif dtype == 1 and not vpn:
+                wd = self.iface(dpath, NM + ".Device.Wired")
+                c["mac"] = _unpack(wd, "HwAddress", "") or _unpack(dev, "HwAddress", "")
+                c["speed"] = _unpack(wd, "Speed", 0) or link_speed(iface)
+                c["duplex"] = link_duplex(iface)
+            elif dtype == 8 and not vpn:
+                md = self.iface(dpath, NM + ".Device.Modem")
+                c["operator"] = _unpack(md, "OperatorCode", "")
+                c["apn"] = _unpack(md, "Apn", "") or conf.get("apn", "")
+                c["modem"] = _unpack(md, "DeviceId", "")
+            elif dtype == 5 and not vpn:
+                bt = self.iface(dpath, NM + ".Device.Bluetooth")
+                c["peer"] = _unpack(bt, "Name", "")
+                c["mac"] = _unpack(bt, "HwAddress", "")
+            elif not vpn:
+                c["mac"] = _unpack(dev, "HwAddress", "")
+            if c["vpn"]:
+                c["server"] = conf.get("server", "")
+                if kind[0] == "wireguard" or iface:
+                    c["vpn_device"] = iface
+            out.append(c)
+        return order_connections(out)
 
     def public(self):
         s = self.get()
@@ -490,6 +573,124 @@ class Wifi(_ObjectManager):
             s.pop("aps", None)
             s.pop("saved", None)
         return s
+
+
+# NetworkManager's device types left out of the connections and the speed
+# history: virtual plumbing, not a way out (veth, dummy, Wi-Fi P2P, loopback,
+# Open vSwitch ports and bridges, VRF)
+HIDDEN_DEVICES = frozenset({20, 22, 30, 32, 25, 26, 31})
+# drivers of the "ethernet" a phone makes over USB (tethering): Android's
+# RNDIS and NCM, the CDC ones some phones and modems use, the iPhone's
+USB_TETHER = frozenset({"rndis_host", "cdc_ether", "cdc_ncm", "cdc_eem", "ipheth", "cdc_subset"})
+# bridges a container runtime or a VM manager made (docker0, br-1a2b…, virbr0)
+VIRTUAL_BRIDGE = re.compile(r"^(docker\d*|br-[0-9a-f]{6,}|virbr\d+|lxcbr\d+|lxdbr\d+|cni\d*|podman\d+)$")
+CONN_LABELS = {"wifi": "Wi-Fi", "hotspot": "Hotspot", "ethernet": "Ethernet", "usb": "USB", "mobile": "Mobile",
+               "bluetooth": "Bluetooth", "vpn": "VPN", "wireguard": "WireGuard", "bridge": "Bridge", "bond": "Bond",
+               "vlan": "VLAN", "team": "Team", "infiniband": "InfiniBand", "other": "Network"}
+
+
+def conn_kind(ac_type, dev_type=0, driver="", iface="", external=False, mode="", vpn=False):
+    """(type, label) of an active connection for the panels ("ethernet",
+    "Ethernet"; "usb", "USB" for a phone tethered over USB; "mobile";
+    "bluetooth"; "vpn"; "wireguard"; "hotspot" for your own access point),
+    or None for what isn't a way out (loopback, a container's bridge)."""
+    if dev_type in HIDDEN_DEVICES or ac_type in ("loopback", "veth", "dummy", "wifi-p2p", "ovs-port", "ovs-bridge"):
+        return None
+    if vpn or ac_type == "vpn":
+        kind = "vpn"
+    elif ac_type == "wireguard" or dev_type == 29:
+        kind = "wireguard"
+    elif ac_type == "802-11-wireless" or dev_type == 2:
+        kind = "hotspot" if mode == "ap" else "wifi"
+    elif ac_type in ("802-3-ethernet", "pppoe") or dev_type == 1:
+        kind = "usb" if driver in USB_TETHER else "ethernet"
+    elif ac_type in ("gsm", "cdma") or dev_type == 8:
+        kind = "mobile"
+    elif ac_type == "bluetooth" or dev_type == 5:
+        kind = "bluetooth"
+    elif ac_type in ("tun", "ip-tunnel") or dev_type in (16, 17):
+        kind = "vpn"            # Tailscale, an OpenVPN started by hand: a tunnel is a VPN to you
+    elif ac_type == "bridge" or dev_type == 13:
+        if VIRTUAL_BRIDGE.match(iface or ""):
+            return None
+        kind = "bridge"
+    elif ac_type in ("bond", "vlan", "team", "infiniband"):
+        kind = ac_type
+    else:
+        kind = "other"
+    return kind, CONN_LABELS[kind]
+
+
+def order_connections(conns):
+    """The connection carrying the default route first, each VPN right
+    after the connection it rides on (its device, else the one with the
+    default route, else the first), each with `via`: that connection's
+    name (and `via_device`, `via_type`). Mutates and returns the list."""
+    base = [c for c in conns if not c.get("vpn")]
+    vpns = [c for c in conns if c.get("vpn")]
+
+    def under(v):
+        if v.get("base_device"):
+            hit = next((c for c in base if c.get("device_path") == v["base_device"]), None)
+            if hit is not None:
+                return hit
+        return next((c for c in base if c.get("default") or c.get("default6")), None) \
+            or next((c for c in base if c.get("gateway") or c.get("gateway6")), None) \
+            or (base[0] if base else None)
+    rides = {}
+    for v in vpns:
+        b = under(v)
+        if b is not None:
+            v["via"], v["via_device"], v["via_type"] = b["name"], b.get("device", ""), b.get("type", "")
+        rides.setdefault(id(b) if b is not None else None, []).append(v)
+    rank = {"wifi": 1, "ethernet": 0, "usb": 2, "mobile": 3, "bluetooth": 4}
+
+    def key(c):
+        lead = c.get("primary") or any(v.get("primary") for v in rides.get(id(c), []))
+        return (not lead, not (c.get("default") or c.get("default6")), c.get("type") == "hotspot",
+                rank.get(c.get("type"), 9))
+    out = []
+    for c in sorted(base, key=key):
+        out.append(c)
+        out += rides.get(id(c), [])
+    out += rides.get(None, [])
+    conns[:] = out
+    return conns
+
+
+def vpn_server(settings):
+    """The server a VPN connection goes to, from its settings (OpenVPN's
+    remote, the gateway of the others, WireGuard's first peer's endpoint)."""
+    data = (settings.get("vpn") or {}).get("data") or {}
+    for k in ("remote", "gateway", "server", "host", "remote-ip"):
+        if data.get(k):
+            return str(data[k]).split(",")[0].strip()
+    for peer in (settings.get("wireguard") or {}).get("peers") or []:
+        if isinstance(peer, dict) and peer.get("endpoint"):
+            return str(peer["endpoint"])
+    return ""
+
+
+def _sys_read(iface, name):
+    try:
+        with open(os.path.join(SYS_NET, iface, name)) as f:
+            return f.read(64).strip()
+    except (OSError, TypeError, ValueError):
+        return ""
+
+
+def link_speed(iface):
+    """The link's speed in Mb/s from sysfs (0 when the driver doesn't say)."""
+    try:
+        v = int(_sys_read(iface, "speed") or 0) if iface else 0
+    except ValueError:
+        return 0
+    return v if 0 < v < 10_000_000 else 0
+
+
+def link_duplex(iface):
+    v = _sys_read(iface, "duplex") if iface else ""
+    return v if v in ("full", "half") else ""
 
 
 def wifi_rescan():
@@ -1184,7 +1385,6 @@ def _boottime():
         return time.monotonic()
 
 
-SYS_NET = "/sys/class/net"
 
 
 def net_counters(dev, base=None):
@@ -1245,12 +1445,12 @@ class NetHistory:
     SLOW, FAST = 2, 1
     WINDOW = 60            # the longest any panel draws (kendra, tarang: a minute)
     KEEP = WINDOW // FAST + 4
-    TYPES = (1, 2)         # NetworkManager's ethernet and Wi-Fi devices
 
     def __init__(self):
         self.rings = {}    # interface -> deque of (boottime, rx_bytes, tx_bytes)
         self.devs = []     # interfaces up now
         self.wifi_dev = ""
+        self.primary_dev = ""
         self.watchers = []  # [fn, fast]
         self.timer = 0
         self.every = 0
@@ -1270,23 +1470,28 @@ class NetHistory:
             self._look = GLib.idle_add(self._devices)
 
     def _devices(self):
+        # every connection the live state shows (Vyom 0.12: Ethernet, Wi-Fi,
+        # USB tethering, mobile broadband, Bluetooth, WireGuard...), by the
+        # interface its bytes go through, the primary connection's first
         self._look = 0
-        devs, wifi = [], ""
+        devs, wifi, primary = [], "", ""
         nm = self.nm
         if nm is not None and nm.running():
-            for _path, dev in nm.objects(NM + ".Device"):
-                kind = _unpack(dev, "DeviceType", 0)
-                if kind in self.TYPES and _unpack(dev, "State", 0) == 100:
-                    i = _unpack(dev, "IpInterface", "") or _unpack(dev, "Interface", "")
+            snap = nm.get() or {}
+            for c in snap.get("connections") or []:
+                for i in (c.get("device"), c.get("vpn_device")):
                     if i and i not in devs:
                         devs.append(i)
-                        if kind == 2 and not wifi:
-                            wifi = i
+                if c.get("primary") and not primary:
+                    primary = c.get("vpn_device") or c.get("device") or ""
+                if c.get("type") == "wifi" and not wifi:
+                    wifi = c.get("device") or ""
         if devs != self.devs:
             self.devs = devs
             if devs and not self.timer:
                 self._read()       # a first reading now: the record starts at once
         self.wifi_dev = wifi
+        self.primary_dev = primary
         self._schedule()
         return False
 
@@ -1338,6 +1543,8 @@ class NetHistory:
         self._schedule()
 
     def default(self):
+        if self.primary_dev in self.devs:
+            return self.primary_dev
         if self.wifi_dev in self.devs:
             return self.wifi_dev
         return self.devs[0] if self.devs else (self.wifi_dev or None)

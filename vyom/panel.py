@@ -439,6 +439,7 @@ class Panel(Gtk.ApplicationWindow):
         pill.add_css_class(f"c-{self.plugin.color}")
         pill.append(label(self.plugin.icon, "glyph"))
         pill.append(label(self.plugin.title, "mode-title"))
+        self.mode_pill = pill
         bar.append(pill)
         self.entry = Gtk.Text(hexpand=True)
         self.entry.add_css_class("query")
@@ -455,6 +456,19 @@ class Panel(Gtk.ApplicationWindow):
             bar.append(extra)
         return bar
 
+    def set_mode(self, icon=None, title=None):
+        """Changes the mode pill's glyph and word while the panel lives (Vyom
+        0.12): tarang reads "Network" with a cable on Ethernet, "Wi-Fi" on
+        Wi-Fi. None keeps what's there."""
+        pill = getattr(self, "mode_pill", None)
+        if pill is None:
+            return
+        g, t = pill.get_first_child(), pill.get_last_child()
+        if icon is not None and g is not None and g.get_label() != icon:
+            g.set_label(icon)
+        if title is not None and t is not None and t.get_label() != title:
+            t.set_label(title)
+
     def build_card_top(self):
         """A card's top bar: its mode pill and its tabs (no search box)."""
         bar = Gtk.Box(spacing=10)
@@ -464,6 +478,7 @@ class Panel(Gtk.ApplicationWindow):
         pill.add_css_class(f"c-{self.plugin.color}")
         pill.append(label(self.plugin.icon, "glyph"))
         pill.append(label(self.plugin.title, "mode-title"))
+        self.mode_pill = pill
         bar.append(pill)
         bar.append(Gtk.Box(hexpand=True))
         self.tab_box = Gtk.Box(spacing=2, valign=Gtk.Align.CENTER)

@@ -220,7 +220,9 @@ the sound server (`pactl subscribe`), the backlight (udev), systemd user
 units and the GNOME colour scheme. Nothing polls; with nothing changing,
 nothing wakes. Panels read it (`from vyom import live`: `live.get("wifi")`
 is a dict at once, `live.watch(name, fn)` while they show), so they open on
-the current state without running a command (ADR 12).
+the current state without running a command (ADR 12). Its `connections` are
+every way the machine is online, the main one first: Wi-Fi, Ethernet, a
+phone over USB, mobile, Bluetooth, a VPN over what it rides on (ADR 16).
 
 Graphs open with their history drawn (ADR 13): `live.history("net")` is
 the last minute of each connected device's speed (its byte counters, read

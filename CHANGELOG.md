@@ -2,6 +2,13 @@
 
 Newest first. Releases are tags (`vX.Y.Z`).
 
+## Unreleased
+
+- **Every connection in the live state** (ADR 16): `live.get("wifi")["connections"]` lists every active connection, whatever it runs over (Wi-Fi, Ethernet, a phone over USB, mobile broadband, Bluetooth, VPN, WireGuard), with its kind and label, interface, addresses, gateway, DNS, link speed and duplex, MAC, operator and APN, the VPN's server and what it rides on; the primary one (`primary`, NetworkManager's PrimaryConnection) first, a VPN after its connection. Docker's bridges, loopback and other plumbing are left out. From the objects Vyom already follows: no command, no new signal.
+- **The net history keeps every connected device**, not only Ethernet and Wi-Fi (`wwan0`, `bnep0`, `wg0`, a phone's `usb0`), so a graph of any connection opens full; `history("net")` without a device is the primary connection's.
+- `Panel.set_mode(icon, title)`: a tool changes its mode pill while it shows (tarang reads "Network" on a cable).
+- `VYOM_SYS_NET` points the network counters, speed and duplex reads at other files (headless tests with a fake NetworkManager).
+
 ## v0.11.0 -- 2026-11-28
 
 - **A key opens a panel ~30 ms sooner**: `vyom <tool>` sends its one D-Bus call (busctl) before Python imports anything else, instead of importing json, subprocess and tempfile and running busctl and then gdbus: 47-50 ms from the key to Vyom, now 18-24 (measured headless). Anything else, or a Vyom that doesn't answer, takes the full path as before.
