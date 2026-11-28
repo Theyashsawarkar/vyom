@@ -2,7 +2,7 @@
 
 Newest first. Releases are tags (`vX.Y.Z`).
 
-## Unreleased
+## v0.12.0 -- 2026-11-28
 
 - **Every connection in the live state** (ADR 16): `live.get("wifi")["connections"]` lists every active connection, whatever it runs over (Wi-Fi, Ethernet, a phone over USB, mobile broadband, Bluetooth, VPN, WireGuard), with its kind and label, interface, addresses, gateway, DNS, link speed and duplex, MAC, operator and APN, the VPN's server and what it rides on; the primary one (`primary`, NetworkManager's PrimaryConnection) first, a VPN after its connection. Docker's bridges, loopback and other plumbing are left out. From the objects Vyom already follows: no command, no new signal.
 - **The net history keeps every connected device**, not only Ethernet and Wi-Fi (`wwan0`, `bnep0`, `wg0`, a phone's `usb0`), so a graph of any connection opens full; `history("net")` without a device is the primary connection's.
