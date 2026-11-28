@@ -2,7 +2,7 @@
 
 Newest first. Releases are tags (`vX.Y.Z`).
 
-## Unreleased
+## v0.13.1 -- 2026-11-28
 
 - **A panel you open keeps the keyboard, however long its first frame takes.** Sway hands an exclusive panel the keyboard when its surface maps, with a quick away-and-back, the same blip a click on a window makes. Vyom ignored that blip for 250 ms after it *asked* for the change, so when the panel's first frame came later (a cold panel or a busy machine: 230-380 ms seen today, once 3 s), the handover looked like a click on a window and the panel let go of the keyboard: it showed, lit, but your keys went to the window, and pressing its key again (a click on the bar's Docker capsule) closed it instead of focusing it. The same happened to a panel you clicked beside another when its raise came late. Now each change of Vyom's own (a panel shown, its keyboard mode, a raise) counts as settling until the panel has painted the frame that carries it, then 250 ms (at most 2 s for a frame that never comes); a click on a window still gives the window the keyboard. Measured headless with a real waybar: a bar click opening patra got the keys 6 times in 6 (before: 5 in 6); the launcher plus quick settings over a window, 7 in 7 (before: 2 in 7).
 
