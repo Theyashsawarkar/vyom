@@ -12,6 +12,7 @@ A tool with `modal = True` has vim keys instead (modal.py, ADR 0008):
 NORMAL and INSERT modes, Space as the leader, ? help. Space never presses
 a focused button on a card, modal or not.
 """
+import copy
 import logging
 import os
 import re
@@ -113,8 +114,14 @@ def keycap_markup(keys):
 
 
 def hint_label(keys, what):
-    """A footer hint: the keys as a key cap, then what they do."""
-    return label(f"{keycap_markup(keys)} {GLib.markup_escape_text(what)}", "hint", markup=True)
+    """A footer hint: the keys as a key cap, then what they do. The cap is
+    its own label so it has round corners (.keycap); a Pango background, as
+    keycap_markup draws, can only be a square box."""
+    box = Gtk.Box(spacing=5, valign=Gtk.Align.CENTER)
+    box.add_css_class("hint")
+    box.append(label(keys, "keycap", "hint-cap"))
+    box.append(label(what, "hint-what"))
+    return box
 
 
 class HintRow(Gtk.Widget):
@@ -255,6 +262,11 @@ class Panel(Gtk.ApplicationWindow):
         self.preview_scroll = None   # the preview column (Space u p hides it)
         self.strip_holder = None
         self.searching = False   # a search is on its way (keys that move wait for it)
+        self.in_flight = False   # search() is running in its thread
+        self.queued = False      # keystrokes came while it ran: one more search after it
+        self.shown = None        # copies of the rows on screen (show_results keeps them if unchanged)
+        self.built = 0           # how many of them have widgets yet
+        self.pending_rows = []   # the results, the first `built` of them with widgets
         self.tab_buttons = {}    # tab key -> its button (build_tabs)
         # Vim keys: every panel can ask (confirm) and show overlays; a modal
         # tool's keys all go through it.
@@ -549,6 +561,7 @@ class Panel(Gtk.ApplicationWindow):
             self.list.add_css_class("list")
             self.list.connect("row-activated", lambda _l, r: self.activate(self.index_of(r), set()))
             self.scroll.set_child(self.list)
+        self.scroll.get_vadjustment().connect("value-changed", self._scrolled)
         self.empty = label("", "empty", vexpand=True, valign=Gtk.Align.CENTER, wrap=True,
                            justify=Gtk.Justification.CENTER)
         overlay = Gtk.Overlay()
@@ -751,15 +764,31 @@ class Panel(Gtk.ApplicationWindow):
         # The warm-up's panel is the launcher: it keeps its surface
         # (app.keeps), so every opening, the first too, reuses it.
         self.release_soon()
+        if hasattr(self.app, "warm_next"):
+            GLib.idle_add(self.app.warm_next, priority=GLib.PRIORITY_LOW)
 
     # ------------------------------------------------------------ searching
     def query(self):
         return self.entry.get_text() if self.plugin.layout != "card" else ""
 
     def refresh_soon(self):
+        """A keystroke (or Plugin.refresh): search again. With the default
+        debounce (40 ms or less) the first keystroke searches at once, and
+        keystrokes typed while that search runs are one search after it
+        lands (a search never waits on a timer: 40 ms on every key). A tool
+        with a longer debounce (raga's yt-dlp) waits until typing pauses."""
         if self.plugin.layout == "card":
             return
         self.searching = True
+        if self.plugin.debounce <= 40:
+            if self.pending:
+                GLib.source_remove(self.pending)
+                self.pending = None
+            if self.in_flight:
+                self.queued = True
+            else:
+                self.refresh_now()
+            return
         if self.pending:
             GLib.source_remove(self.pending)
         self.pending = GLib.timeout_add(self.plugin.debounce, self._fire)
@@ -774,6 +803,7 @@ class Panel(Gtk.ApplicationWindow):
             return
         self.gen += 1
         self.searching = True
+        self.in_flight = True
         gen, q = self.gen, self.query()
         keep = self.selected_row() if keep_selection else None
 
@@ -782,21 +812,93 @@ class Panel(Gtk.ApplicationWindow):
                 res = self.plugin.search(q)
             except Exception as e:  # a plugin bug shouldn't kill the panel
                 logging.getLogger(f"vyom.{self.plugin.name}").exception("search(%r) failed", q)
-                res = [Row(f"{self.plugin.name}: {e}", icon="", color="red")]
-            GLib.idle_add(self.show_results, gen, res, keep)
+                res = [Row(f"{self.plugin.name}: {e}", icon="", color="red")]
+            # DEFAULT, not idle priority: the results go in before the next
+            # frame is drawn, not after it
+            GLib.idle_add(self._landed, gen, res, keep, priority=GLib.PRIORITY_DEFAULT)
         threading.Thread(target=work, daemon=True).start()
+
+    def _landed(self, gen, results, keep):
+        if gen == self.gen:
+            self.in_flight = False
+        self.show_results(gen, results, keep)
+        if self.queued and not self.in_flight:
+            self.queued = False
+            self.refresh_now()
+        return False
+
+    FIRST_ROWS = 60      # rows with widgets at first; more as you scroll or move down to them
+    MORE_ROWS = 60
 
     def show_results(self, gen, results, keep=None):
         if gen != self.gen:
             return False  # a newer search is on its way
-        container = self.grid if self.plugin.layout == "grid" else self.list
-        child = container.get_first_child()
-        while child is not None:
-            nxt = child.get_next_sibling()
-            container.remove(child)
-            child = nxt
-        self.items = []
-        for r in results[:400]:
+        results = results[:400]
+        # The same rows as on screen (a reopen with an empty query, a live
+        # refresh that found nothing new): keep the widgets, unless many
+        # more than the first ones were built (scrolled far down before).
+        try:
+            same = self.shown is not None and len(self.shown) == len(results) \
+                and self.built <= self.FIRST_ROWS + self.MORE_ROWS \
+                and all(a == b for a, b in zip(self.shown, results))
+        except Exception:   # a row's data that can't be compared: build it anew
+            same = False
+        if not same:
+            container = self.grid if self.plugin.layout == "grid" else self.list
+            child = container.get_first_child()
+            while child is not None:
+                nxt = child.get_next_sibling()
+                container.remove(child)
+                child = nxt
+            self.items = []
+            self.shown = [copy.copy(r) for r in results]
+            self.built = 0
+            self.pending_rows = results
+            want = self.FIRST_ROWS
+            if keep is not None:   # the kept row is built now, wherever it is
+                want = max(want, 1 + next((i for i, r in enumerate(results) if isinstance(r, Row)
+                                           and r.title == keep.title and r.subtitle == keep.subtitle), 0))
+            self._build_rows(want)
+        self.empty.set_label("" if self.items or self.built < len(results)
+                             else getattr(self.plugin, "empty_text", "Nothing found"))
+        self.refresh_strip()
+        idx = 0
+        if keep is not None:
+            idx = next((i for i, (r, _) in enumerate(self.items)
+                        if r.title == keep.title and r.subtitle == keep.subtitle), 0)
+        elif same and 0 <= self.sel < len(self.items) and self.plugin.keep_query:
+            idx = self.sel
+        self.select(idx if self.items else -1)
+        self._settled()
+        return False
+
+    def _settled(self):
+        if self.pending is None and not self.queued:   # nothing newer waiting: moves typed meanwhile run now
+            self.searching = False
+            if self.modal is not None:
+                self.modal.flush()
+
+    def more_rows(self, need=None):
+        """Widgets for the next results (GTK's list draws and lays out every
+        row it holds, so a 400-row list cost 130 ms a frame): when the
+        selection or the scrollbar nears the end of what's built, or up to
+        index `need` of the items. True if it built any."""
+        if self.built >= len(self.pending_rows):
+            return False
+        while self.built < len(self.pending_rows) and (need is None or len(self.items) <= need):
+            self._build_rows(self.built + self.MORE_ROWS)
+            if need is None:
+                break
+        return True
+
+    def _scrolled(self, adj):
+        if adj.get_value() + 2 * adj.get_page_size() >= adj.get_upper():
+            self.more_rows()
+
+    def _build_rows(self, upto):
+        """Widgets for results[built:upto] (Sections are headers, not items)."""
+        rows = self.pending_rows
+        for r in rows[self.built:upto]:
             if isinstance(r, Section):
                 if self.plugin.layout == "grid":
                     continue
@@ -822,18 +924,7 @@ class Panel(Gtk.ApplicationWindow):
                 w.set_child(row_widget(r))
                 self.list.append(w)
             self.items.append((r, w))
-        self.empty.set_label("" if self.items else getattr(self.plugin, "empty_text", "Nothing found"))
-        self.refresh_strip()
-        idx = 0
-        if keep is not None:
-            idx = next((i for i, (r, _) in enumerate(self.items)
-                        if r.title == keep.title and r.subtitle == keep.subtitle), 0)
-        self.select(idx if self.items else -1)
-        if self.pending is None:   # no newer search waiting: moves typed meanwhile run now
-            self.searching = False
-            if self.modal is not None:
-                self.modal.flush()
-        return False
+        self.built = min(upto, len(rows))
 
     # ------------------------------------------------------------ selection
     def index_of(self, widget):
@@ -847,6 +938,8 @@ class Panel(Gtk.ApplicationWindow):
             self.sel = -1
             self.update_preview()
             return
+        if i >= len(self.items) - 8:   # near (or past) the last row built: build more first
+            self.more_rows(need=i + 8)
         i = max(0, min(i, len(self.items) - 1))
         self.sel = i
         w = self.items[i][1]

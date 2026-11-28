@@ -463,6 +463,8 @@ class Modal:
         self.p.select((n - 1) * self.cols() if n > 1 else 0)
 
     def c_bottom(self, n, _a):
+        if n <= 1 and hasattr(self.p, "more_rows"):
+            self.p.more_rows(need=1 << 30)   # the last result, not the last row built so far
         self.p.select((n - 1) * self.cols() if n > 1 else len(self.p.items) - 1)
 
     def page_rows(self):

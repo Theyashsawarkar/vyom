@@ -25,7 +25,7 @@ gi.require_version("Graphene", "1.0")
 gi.require_version("Gtk4LayerShell", "1.0")
 from gi.repository import Gdk, Gio, GLib, Gtk  # noqa: E402
 
-from . import VERSION, config, live, util  # noqa: E402
+from . import VERSION, config, live, osd, util  # noqa: E402
 from . import log as vlog  # noqa: E402
 from .panel import Panel, set_keycap_colours  # noqa: E402
 from .plugin import Hint, Plugin, Row  # noqa: E402
@@ -133,9 +133,11 @@ class Vyom(Gtk.Application):
         self.order = []
         self.last_args = {}
         self.warm_name = None   # the warm-up's panel (the launcher): always kept
+        self.warm_queue = []    # kept panels still to warm up after it
         self.uses = None        # {tool: [unix times it opened]}, the last week (keeps)
         self.uses_dirty = False
         for name, ptype, cb in (("open", "s", self.on_open), ("dmenu", "s", self.on_dmenu),
+
                                 ("quick", None, lambda *_: self.open("kendra", [])),
                                 ("close", None, lambda *_: self.close_all()),
                                 ("reload", None, self.on_reload), ("quit", None, lambda *_: self.quit())):
@@ -234,6 +236,7 @@ class Vyom(Gtk.Application):
         # read it, other programs get it on D-Bus and in $XDG_RUNTIME_DIR.
         if self.conf.get("vyom", {}).get("live", True) is not False:
             live.export(self.get_dbus_connection())
+            osd.export(self.get_dbus_connection())   # volume / brightness keys (ADR 15)
         for name in list(self.plugins):
             self.panel(name)
         log.info("built %d panels in %d ms", len(self.panels), (time.monotonic() - t0) * 1000)
@@ -268,7 +271,25 @@ class Vyom(Gtk.Application):
         if not self.order or self.conf.get("vyom", {}).get("warm_up", True) is False:
             return
         self.warm_name = "dvara" if "dvara" in self.plugins else self.order[0]
+        # Then every other panel that keeps its surface (keep, keep_often),
+        # one after another: it would make its surface on its first opening
+        # anyway and keep it; made now, the first opening is as quick as the
+        # next (bhava's emoji, kendra: 55-150 ms -> 10-20 ms).
+        self.warm_queue = [n for n in self.order if n != self.warm_name and n in self.plugins and self.keeps(n)]
         self.panel(self.warm_name).warm_up()
+
+    def warm_next(self):
+        """The next kept panel's warm-up (Panel.end_warm_up calls this), while
+        nothing is open: a panel you opened meanwhile goes first."""
+        if any(p.get_visible() for p in self.panels.values()):
+            GLib.timeout_add(500, lambda: (self.warm_next(), False)[1])
+            return False
+        while getattr(self, "warm_queue", None):
+            p = self.panel(self.warm_queue.pop(0))
+            if not p.get_visible() and not p.get_realized():
+                p.warm_up()
+                return False
+        return False
 
     # ------------------------------------------------- which panels stay warm
     WEEK = 7 * 86400

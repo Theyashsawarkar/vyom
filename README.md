@@ -199,7 +199,7 @@ disabled = ["raga"]          # installed tools not to load
 width = 900                  # every panel opens at this size (times scale = 1.25)
 height = 520
 opacity = 0.72               # panel background: 1 solid, lower = more glass
-warm_up = true               # draw the launcher once off screen at start, so the first opening is instant
+warm_up = true               # draw the launcher, then every kept panel, once off screen at start: first openings are instant
 release_after = 600          # seconds a rarely used hidden panel keeps its surface (graphics memory); false: always
 keep = ["dvara", "ganit"]    # panels that always keep theirs (the launcher always does)
 keep_often = 5               # ...and any opened this many times in the last week (0: off)
@@ -247,6 +247,23 @@ of watching the sound server and the backlight themselves.
 ```sh
 gdbus call --session -d dev.vayu.Vyom -o /dev/vayu/Vyom/State -m dev.vayu.Vyom.State.Get battery
 cat $XDG_RUNTIME_DIR/vayu/state/wifi.json
+```
+
+### Volume and brightness keys
+
+One call does a volume or brightness step (ADR 15): Vyom already knows the
+level, so it works out the new one, shows the slider at once (a desktop
+notification with the `value` hint, the same look in any notification
+server) and applies it behind it: one `pactl` at a time for the volume (a
+burst of steps stacks on the level asked for; 0% mutes, any step unmutes),
+logind's `SetBrightness` for the backlight (no process; `brightnessctl`
+without logind). It answers `false` when it doesn't know the level, so a
+key script can fall back to its own way:
+
+```sh
+busctl --user call dev.vayu.Vyom /dev/vayu/Vyom/Osd dev.vayu.Vyom.Osd Step s 'volume +5'      # b true
+busctl --user call dev.vayu.Vyom /dev/vayu/Vyom/Osd dev.vayu.Vyom.Osd Step s 'volume mute-toggle'
+busctl --user call dev.vayu.Vyom /dev/vayu/Vyom/Osd dev.vayu.Vyom.Osd Step s 'brightness -5'
 ```
 
 `~/.config/vyom/style.css` loads after the tools' styles, to restyle anything;
