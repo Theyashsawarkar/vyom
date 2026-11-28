@@ -2,7 +2,7 @@
 
 Newest first. Releases are tags (`vX.Y.Z`).
 
-## Unreleased
+## v0.13.0 -- 2026-11-28
 
 - **Panels stay on the workspace they opened on** (ADR 17): switch workspaces and a panel hides with everything in it kept (what you typed, the selection, the scroll, the page it's on); come back and it's there as you left it. Each workspace has its own panels, and a workspace moved to another monitor takes them along. Vyom follows sway's IPC events in-process (one socket on `$SWAYSOCK`, no polling, no child process); other compositors behave as one workspace. `[vyom] follow_workspaces = false` turns it off.
 - **Several panels at once, by place**: the centre (launcher, calculator, clipboard, Wi-Fi…) and each corner or edge a tool anchors to (quick settings: top right) are slots; panels in different slots stay open side by side, so picking an app while clicking quick settings on the bar keeps both. They never cover each other: a centre panel moves into the free area beside an edge or corner panel (narrower only if there's no room, never below 640 px) and back when it goes, instantly. A panel opened into a taken slot covers the one there, which keeps its state: its key brings it back as it was. `[plugin.<name>] slot = "center" | "top-right" | …` changes a tool's slot.
