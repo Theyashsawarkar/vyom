@@ -707,8 +707,15 @@ class Panel(Gtk.ApplicationWindow):
             log.debug("%s: keys %s", self.plugin.name, mode)
             self.keys = mode
             LayerShell.set_keyboard_mode(self, KEY_MODES[mode])
-            if hasattr(self.app, "settle"):
-                self.app.settle()
+            self._settle_after()
+
+    def _settle_after(self):
+        """A change sway sees with the next frame (keyboard mode, layer):
+        its focus notices until shortly after are Vyom's own (app.settle_after)."""
+        if hasattr(self.app, "settle_after"):
+            self.app.settle_after(self)
+        elif hasattr(self.app, "settle"):
+            self.app.settle()
 
     def raise_up(self):
         """Draws it above the other panels. Sway stacks layer surfaces in
@@ -720,6 +727,7 @@ class Panel(Gtk.ApplicationWindow):
             return
         log.debug("%s: raise (top layer)", self.plugin.name)
         LayerShell.set_layer(self, LayerShell.Layer.TOP)
+        self._settle_after()
         self.raising = True
 
         def back(*_):
@@ -727,6 +735,7 @@ class Panel(Gtk.ApplicationWindow):
                 self.raising = False
                 log.debug("%s: raise (back to overlay)", self.plugin.name)
                 LayerShell.set_layer(self, LayerShell.Layer.OVERLAY)
+                self._settle_after()
             return False
         def hook():
             clock = self.get_frame_clock() if self.get_visible() else None

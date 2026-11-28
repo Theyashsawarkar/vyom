@@ -33,7 +33,7 @@ from gi.repository import Gdk, Gio, GLib, Gtk  # noqa: E402
 from . import VERSION, config, live, osd, sway, util  # noqa: E402
 from . import log as vlog  # noqa: E402
 from .panel import Panel, set_keycap_colours  # noqa: E402
-from .places import CENTER, Places, clear_of, edge_rect, slot_of  # noqa: E402
+from .places import CENTER, Places, Settle, clear_of, edge_rect, slot_of  # noqa: E402
 from .plugin import Hint, Plugin, Row  # noqa: E402
 
 log = logging.getLogger("vyom")
@@ -146,7 +146,7 @@ class Vyom(Gtk.Application):
         self.places = Places()   # which workspace and slot each open panel has, who has the keys
         self.sway = None
         self.ws_ids = {}
-        self.settle_until = 0.0  # Vyom's own keyboard changes: focus notices until then are its own
+        self.settling = Settle()  # Vyom's own keyboard changes: focus notices meanwhile are its own
         for name, ptype, cb in (("open", "s", self.on_open), ("dmenu", "s", self.on_dmenu),
                                 ("hide", "s", lambda _a, v: self.close_panel(v.get_string())),
                                 ("quick", None, lambda *_: self.open("kendra", [])),
@@ -468,6 +468,7 @@ class Vyom(Gtk.Application):
                 p.show_panel((args or {}).get(name, self.last_args.get(name, [])), keys=keys)
             else:
                 p.unpark(keys=keys)
+            self.settle_after(p)   # sway hands it the keyboard as it maps, not now
         for name, output in ch.move:
             p = self.panels.get(name)
             if p is not None:
@@ -552,8 +553,27 @@ class Vyom(Gtk.Application):
                     break
         return False
 
-    def settle(self, seconds=0.25):
-        self.settle_until = max(self.settle_until, time.monotonic() + seconds)
+    def settle(self, seconds=None):
+        self.settling.now(time.monotonic(), seconds)
+
+    def settle_after(self, panel):
+        """panel's change (shown, a keyboard mode, a layer) reaches sway
+        with its next frame, and sway's keyboard handover with it: focus
+        notices are Vyom's own until a moment after that frame (a slow
+        first frame on a busy machine came 300 ms and more after the key,
+        its handover blip read as a click on a window: the panel just
+        opened lost the keyboard)."""
+        name = panel.plugin.name
+        self.settling.hold(name, time.monotonic())
+        clock = panel.get_frame_clock() if panel.get_visible() else None
+        if clock is None:
+            return   # nothing to paint yet: the hold runs out after Settle.HOLD
+
+        def painted(c, *_):
+            c.disconnect(hid)
+            self.settling.painted(name, time.monotonic())
+        hid = clock.connect("after-paint", painted)
+        panel.queue_draw()   # a frame comes even when nothing on it changed
 
     def panel_pressed(self, panel):
         """A click or tap on a panel that shows: it takes the keyboard."""
@@ -571,13 +591,13 @@ class Vyom(Gtk.Application):
         back (the panel takes keys exclusively): that blip, or a loss that
         lasts, means a window has it now: the panel lets go."""
         name = panel.plugin.name
-        if self.places.focus != name or panel.is_active() or time.monotonic() < self.settle_until:
+        if self.places.focus != name or panel.is_active() or not self.settling.quiet(time.monotonic()):
             return
         GLib.timeout_add(40, self._lost_check, name)
 
     def _lost_check(self, name):
         pl = self.places
-        if pl.focus != name or time.monotonic() < self.settle_until or name not in self.panels:
+        if pl.focus != name or not self.settling.quiet(time.monotonic()) or name not in self.panels:
             return False
         p = self.panels[name]
         if not p.get_visible():

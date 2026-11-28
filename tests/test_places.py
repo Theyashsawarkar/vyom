@@ -7,7 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from vyom import sway  # noqa: E402
-from vyom.places import CENTER, Places, clear_of, edge_rect, slot_of  # noqa: E402
+from vyom.places import CENTER, Places, Settle, clear_of, edge_rect, slot_of  # noqa: E402
 
 TR = "top-right"
 
@@ -422,6 +422,56 @@ class SwayIpc(unittest.TestCase):
     def test_socket_path(self):
         self.assertIsNone(sway.socket_path({}))
         self.assertEqual(sway.socket_path({"SWAYSOCK": __file__}), __file__)
+
+
+class Settling(unittest.TestCase):
+    """Focus notices while Vyom's own change reaches sway are its own: until
+    a moment after the panel paints the frame carrying it, however late."""
+
+    def test_slow_first_frame(self):
+        # kendra opened beside dvara over a window; its first frame came 270 ms
+        # after the key, and sway's handover blip with it (seen headless): that
+        # blip is no click on a window.
+        s = Settle()
+        s.hold("kendra", 10.0)
+        self.assertFalse(s.quiet(10.27))           # no frame yet: still Vyom's
+        s.painted("kendra", 10.27)
+        self.assertFalse(s.quiet(10.273))          # the blip, right after the frame
+        self.assertFalse(s.quiet(10.27 + Settle.AFTER - 0.01))
+        self.assertTrue(s.quiet(10.27 + Settle.AFTER))   # then a loss is yours
+
+    def test_quick_frame_as_before(self):
+        s = Settle()
+        s.hold("dvara", 5.0)
+        s.painted("dvara", 5.01)
+        self.assertFalse(s.quiet(5.2))
+        self.assertTrue(s.quiet(5.27))
+
+    def test_frame_that_never_comes(self):
+        s = Settle()
+        s.hold("ganit", 1.0)                       # hidden before it painted
+        self.assertFalse(s.quiet(1.0 + Settle.HOLD - 0.01))
+        self.assertTrue(s.quiet(1.0 + Settle.HOLD))
+        s.painted("ganit", 9.0)                    # a late frame after: nothing held, no new settling
+        self.assertTrue(s.quiet(9.0))
+
+    def test_every_held_panel_paints(self):
+        s = Settle()
+        s.hold("dvara", 0.0)
+        s.hold("kendra", 0.0)
+        s.painted("dvara", 0.05)
+        self.assertFalse(s.quiet(1.0))             # kendra hasn't painted
+        s.painted("kendra", 1.0)
+        self.assertTrue(s.quiet(1.0 + Settle.AFTER))
+
+    def test_now(self):
+        s = Settle()
+        s.now(3.0)
+        self.assertFalse(s.quiet(3.1))
+        self.assertTrue(s.quiet(3.0 + Settle.AFTER))
+        s.now(4.0, 1.0)
+        self.assertFalse(s.quiet(4.9))
+        self.assertTrue(s.quiet(5.0))
 
 
 if __name__ == "__main__":

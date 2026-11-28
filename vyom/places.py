@@ -319,6 +319,44 @@ class Places:
             self.outputs[new] = self.outputs.pop(old)
 
 
+class Settle:
+    """When focus notices are Vyom's own doing. Sway hands the keyboard
+    over (and back, a blip a click on a window also makes) when a panel's
+    surface commits: its first frame after it shows, the frame that
+    carries a new keyboard mode or layer. Not when Vyom asks: on a busy
+    machine that frame can come 300 ms or more later. So a panel Vyom
+    changed holds the settling until it has painted that frame (at most
+    HOLD seconds, a frame that never comes), and every blip until AFTER
+    seconds past that is the handover, not you clicking a window."""
+    AFTER = 0.25
+    HOLD = 2.0
+
+    def __init__(self):
+        self.until = 0.0
+        self.holds = {}    # panel name -> when its hold runs out without a frame
+
+    def now(self, now, seconds=None):
+        """A change takes effect now (nothing left to paint for it)."""
+        self.until = max(self.until, now + (self.AFTER if seconds is None else seconds))
+
+    def hold(self, name, now):
+        """name's change takes effect with its next frame."""
+        self.holds[name] = now + self.HOLD
+        self.now(now)
+
+    def painted(self, name, now):
+        """name painted that frame: sway has it now, settling from here."""
+        if self.holds.pop(name, None) is not None:
+            self.now(now)
+
+    def quiet(self, now):
+        """No change of Vyom's own is under way: a focus notice now is yours."""
+        for n, end in list(self.holds.items()):
+            if end <= now:
+                del self.holds[n]
+        return now >= self.until and not self.holds
+
+
 GAP = 12        # px between a centre panel and an edge panel beside it
 MIN_WIDTH = 640  # px: a centre panel never gets narrower than this to make room
 

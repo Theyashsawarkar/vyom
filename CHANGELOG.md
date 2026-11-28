@@ -2,6 +2,10 @@
 
 Newest first. Releases are tags (`vX.Y.Z`).
 
+## Unreleased
+
+- **A panel you open keeps the keyboard, however long its first frame takes.** Sway hands an exclusive panel the keyboard when its surface maps, with a quick away-and-back, the same blip a click on a window makes. Vyom ignored that blip for 250 ms after it *asked* for the change, so when the panel's first frame came later (a cold panel or a busy machine: 230-380 ms seen today, once 3 s), the handover looked like a click on a window and the panel let go of the keyboard: it showed, lit, but your keys went to the window, and pressing its key again (a click on the bar's Docker capsule) closed it instead of focusing it. The same happened to a panel you clicked beside another when its raise came late. Now each change of Vyom's own (a panel shown, its keyboard mode, a raise) counts as settling until the panel has painted the frame that carries it, then 250 ms (at most 2 s for a frame that never comes); a click on a window still gives the window the keyboard. Measured headless with a real waybar: a bar click opening patra got the keys 6 times in 6 (before: 5 in 6); the launcher plus quick settings over a window, 7 in 7 (before: 2 in 7).
+
 ## v0.13.0 -- 2026-11-28
 
 - **Panels stay on the workspace they opened on** (ADR 17): switch workspaces and a panel hides with everything in it kept (what you typed, the selection, the scroll, the page it's on); come back and it's there as you left it. Each workspace has its own panels, and a workspace moved to another monitor takes them along. Vyom follows sway's IPC events in-process (one socket on `$SWAYSOCK`, no polling, no child process); other compositors behave as one workspace. `[vyom] follow_workspaces = false` turns it off.
