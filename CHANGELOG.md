@@ -2,7 +2,7 @@
 
 Newest first. Releases are tags (`vX.Y.Z`).
 
-## Unreleased
+## v0.11.0 -- 2026-11-28
 
 - **A key opens a panel ~30 ms sooner**: `vyom <tool>` sends its one D-Bus call (busctl) before Python imports anything else, instead of importing json, subprocess and tempfile and running busctl and then gdbus: 47-50 ms from the key to Vyom, now 18-24 (measured headless). Anything else, or a Vyom that doesn't answer, takes the full path as before.
 - **Typing searches at once**: the first keystroke after a pause searches right away instead of after a 40 ms timer, keystrokes typed while a search runs are one search after it, and the results go in before the next frame (they waited for idle time). Launcher: a key to its results on screen went from 60-95 ms to 17-47 ms. A tool with a longer `debounce` (raga's yt-dlp) still waits for a pause.
