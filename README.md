@@ -52,6 +52,7 @@ every tool opens instantly and looks the same.
 - [The tools](#the-tools)
 - [Install](#install)
 - [Usage](#usage)
+- [Several panels, per workspace](#several-panels-per-workspace)
 - [Configuration](#configuration)
 - [Writing a tool](#writing-a-tool)
 - [Troubleshooting](#troubleshooting)
@@ -113,7 +114,7 @@ layer_effects "vyom" {                # SwayFX: blurred glass behind every panel
 ## Usage
 
 ```
-vyom <tool> [args]        open a tool (e.g. vyom tarang, vyom raga video); again closes it
+vyom <tool> [args]        open a tool on this workspace (e.g. vyom tarang, vyom raga video); again closes it
 vyom dmenu [-p PROMPT] [--markup] < lines
                           pick one line: printed on stdout, exit 1 on Esc (like wofi --dmenu)
 vyom list                 installed tools, and why one is skipped
@@ -127,7 +128,8 @@ well under a tenth of a second. `vyom dmenu` makes any script's picker a
 Vyom panel: `printf 'Accept\nReject\n' | vyom dmenu -p "Pair?"`.
 
 Every panel: type to search, `Up`/`Down` (or `Ctrl+K`/`Ctrl+J`) move,
-`Page Up`/`Page Down` jump, `Enter` runs, `Esc` closes. A tool's tabs are its
+`Page Up`/`Page Down` jump, `Enter` runs, `Esc` closes it (only the panel with
+the keyboard; others stay open). A tool's tabs are its
 main kinds (ganit's Calculate and Convert, tarang's Networks and Hotspot),
 shown by name and switched the same way everywhere: `Tab` / `Shift+Tab` (or
 `Ctrl+L`/`Ctrl+H`) for the next/previous tab and `Ctrl+1..9` (`Ctrl+0`: the
@@ -145,7 +147,7 @@ its footer and README).
 | `Ctrl+H / Ctrl+L` | Switch to the previous / next tab (tools with tabs) |
 | `Ctrl+1..9` | Switch to the first..ninth tab (Ctrl+0: the tenth; its tooltip says which) |
 | `F11` | Toggle fullscreen (each tool remembers it) |
-| `Esc` | Close the panel |
+| `Esc` | Close the panel (only the one with the keyboard; others stay open) |
 
 On a card (the power menu, quick settings, the battery), `Space` never presses
 the focused button; `Enter` does.
@@ -188,6 +190,44 @@ but never use its letter for something else: `Space` palette, `?` keys,
 `a` add, `d` delete, `e` edit, `o` open outside, `g` go to, `m` mark,
 `,` settings, `k` ask AI. A tool's own groups use the other letters
 (b c h i j l n p v w x z).
+
+## Several panels, per workspace
+
+Panels behave like windows that know their place (ADR 17):
+
+- **A panel belongs to the workspace it opened on.** Switch away and it hides,
+  with everything in it kept: what you typed, the selection, the scroll, the
+  page you were on. Come back and it's there as you left it. Each workspace
+  has its own panels; move a workspace to another monitor and its panels go
+  with it. Vyom follows sway's IPC events for this (nothing polls); on other
+  compositors panels behave as if there were one workspace.
+- **Several open at once, by place.** Each panel has a slot: the centre (the
+  launcher, calculator, clipboard, Wi-Fi…) or the corner or edge it's anchored
+  to (quick settings: top right, under the bar). Panels in different slots
+  stay open side by side: pick an app in the launcher, click the quick
+  settings on the bar, and both are open. Opening a panel whose slot is taken
+  covers the one there, which keeps its state: its key brings it back as it was.
+- **The keyboard is like a window's.** The panel opened last has it; click
+  another panel and that one does, and comes to the top. It's the lit glass;
+  the others are quieter glass, just as readable. Click a window and the keyboard goes to the window;
+  the panels stay open (`Esc` or their key closes them). `Esc` closes only the
+  panel with the keyboard, which then goes back to the one that had it
+  before. A tool's own key (`vyom <tool>`, a bar click) opens or closes only
+  that panel.
+- **Pickers don't linger.** `vyom dmenu`'s picker (a script waits for it)
+  closes, answering nothing, when it loses the keyboard, is covered, or you
+  leave its workspace; a panel it covered comes back.
+
+```toml
+[plugin.kendra]
+slot = "center"              # the slot it takes: "center", "top-right", "top", "bottom-left"…
+                             # (default: from where the tool anchors itself; only which panels
+                             # share a place changes, not where it's drawn)
+[plugin.vishram]
+transient = true             # close when it loses the keyboard or its workspace, like dmenu
+[vyom]
+follow_workspaces = false    # panels ignore workspaces (one set for every workspace)
+```
 
 ## Configuration
 
@@ -321,7 +361,9 @@ when the keys differ by tab (or mode); a `set_status("…")` message takes their
 place while it shows, so it's never cut short. See
 `vyom/plugin.py` for every hook (`tabs` with `self.tab`, `tab_changed`
 and `select_tab`; `header_extra`, `key`, `opened`, `closed`, `live`,
-`anchor`, `prewarm` to fill caches while Vyom is idle after it starts…),
+`anchor`, `slot`, `transient`, `prewarm` to fill caches while Vyom is idle
+after it starts, `parked` / `unparked` when its panel hides and shows again
+without closing: its workspace was left, or another panel took its slot…),
 `vyom/ui.py` for widgets (`warm_icons` for a tool's icons), and any tool repo
 for a worked example. Put it in `~/.local/share/vyom/plugins/hello` (or a
 directory in `$VYOM_PLUGIN_PATH`) and `vyom reload`.
@@ -373,6 +415,13 @@ outside Vyom vendor the keys module with `scripts/vendor-keys.sh <file>`.
 - **No blur or rounded corners.** That's the compositor's part: on SwayFX use
   the `layer_effects "vyom"` block above; Hyprland: `layerrule = blur, vyom`.
 - **Icons show as boxes.** Install a [Nerd Font](https://www.nerdfonts.com).
+- **A panel stays when I switch workspaces / opens on the wrong monitor.**
+  Vyom follows sway through `$SWAYSOCK`; the daemon logs `no sway socket` or
+  `sway IPC closed` when it can't. `[vyom] follow_workspaces = false` turns it off.
+- **Two panels overlap.** Panels in different slots are drawn where their
+  tools put them; on a small screen the centre panel and quick settings can
+  overlap. The one with the keyboard is drawn on top (click the other to
+  bring it up); give one the other's `slot` to have them replace each other.
 
 ## Contributing
 

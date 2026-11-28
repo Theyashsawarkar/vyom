@@ -2,6 +2,14 @@
 
 Newest first. Releases are tags (`vX.Y.Z`).
 
+## Unreleased
+
+- **Panels stay on the workspace they opened on** (ADR 17): switch workspaces and a panel hides with everything in it kept (what you typed, the selection, the scroll, the page it's on); come back and it's there as you left it. Each workspace has its own panels, and a workspace moved to another monitor takes them along. Vyom follows sway's IPC events in-process (one socket on `$SWAYSOCK`, no polling, no child process); other compositors behave as one workspace. `[vyom] follow_workspaces = false` turns it off.
+- **Several panels at once, by place**: the centre (launcher, calculator, clipboard, Wi-Fi…) and each corner or edge a tool anchors to (quick settings: top right) are slots; panels in different slots stay open side by side, so picking an app while clicking quick settings on the bar keeps both. A panel opened into a taken slot covers the one there, which keeps its state: its key brings it back as it was. `[plugin.<name>] slot = "center" | "top-right" | …` changes a tool's slot.
+- **The keyboard works like a window's**: the panel opened last has it, a click on another panel gives it to that one, a click on a window gives it to the window (panels stay open). The panel with the keyboard is the lit glass and drawn on top (a step brighter while others show, `.vyom-panel.lit`), the others quieter glass (`.vyom-panel.away`: no lit rim or top edge; text unchanged). `Esc` closes only the panel with the keyboard, which then goes back to the one that had it; a tool's key (`vyom <tool>`, a bar click) and a tool's `close()` close only that panel. Panels take keys exclusively only while they have the keyboard (none otherwise); measured headless, key to first frame is unchanged (launcher 13 ms, quick settings 15 -> 11 ms median).
+- **`vyom dmenu`'s picker never lingers**: it closes (answering nothing) when it loses the keyboard, is covered or its workspace is left, and the panel it covered comes back. `transient = true` in a tool's section does the same for any tool. A script killed while waiting now closes only its picker (the new `hide` action), not every panel.
+- For tools: `Plugin.parked()` / `Plugin.unparked()` (optional) when the panel hides and shows again without closing; `Plugin.slot`, `Plugin.transient`. A list's `live` refresh restarts by itself.
+
 ## v0.12.0 -- 2026-11-28
 
 - **Every connection in the live state** (ADR 16): `live.get("wifi")["connections"]` lists every active connection, whatever it runs over (Wi-Fi, Ethernet, a phone over USB, mobile broadband, Bluetooth, VPN, WireGuard), with its kind and label, interface, addresses, gateway, DNS, link speed and duplex, MAC, operator and APN, the VPN's server and what it rides on; the primary one (`primary`, NetworkManager's PrimaryConnection) first, a VPN after its connection. Docker's bridges, loopback and other plumbing are left out. From the objects Vyom already follows: no command, no new signal.

@@ -385,7 +385,7 @@ class Modal:
 
     # core actions (a tool overrides one with a v_<name> method)
     def c_close(self, _n, _a):
-        self.p.app.close_all()
+        self.p.close_me()
 
     def c_escape(self, _n, _a):
         if self.plugin.escape():
@@ -393,7 +393,7 @@ class Modal:
         if self.plugin.layout != "card" and self.p.entry.get_text():
             self.p.entry.set_text("")
             return
-        self.p.app.close_all()
+        self.p.close_me()
 
     def c_normal(self, _n, _a):
         self.set_mode("normal")

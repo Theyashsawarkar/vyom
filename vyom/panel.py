@@ -34,10 +34,11 @@ log = logging.getLogger("vyom")
 # keybind: Vyom/every panel | Ctrl+H / Ctrl+L | Switch to the previous / next tab (tools with tabs; in a grid like the emoji picker they move left / right)
 # keybind: Vyom/every panel | Ctrl+1..9 | Switch to the first..ninth tab (Ctrl+0: the tenth; its tooltip says which)
 # keybind: Vyom/every panel | F11 | Toggle fullscreen (each tool remembers it)
-# keybind: Vyom/every panel | Esc | Close the panel
+# keybind: Vyom/every panel | Esc | Close the panel (only the one with the keyboard; others stay open)
 
 RELEASE_AFTER = 600   # seconds a rarely used hidden panel keeps its surface (ADR 11)
 FULL_GAP = 14   # fullscreen: the gap left at each edge of the screen, in pixels
+KEY_MODES = {"exclusive": LayerShell.KeyboardMode.EXCLUSIVE, "none": LayerShell.KeyboardMode.NONE}
 
 MODS = {"shift": Gdk.ModifierType.SHIFT_MASK, "ctrl": Gdk.ModifierType.CONTROL_MASK,
         "alt": Gdk.ModifierType.ALT_MASK}
@@ -237,7 +238,13 @@ class Panel(Gtk.ApplicationWindow):
         LayerShell.init_for_window(self)
         LayerShell.set_namespace(self, "vyom")
         LayerShell.set_layer(self, LayerShell.Layer.OVERLAY)
-        LayerShell.set_keyboard_mode(self, LayerShell.KeyboardMode.EXCLUSIVE)
+        # Keys (ADR 17): exclusive for the panel with the keyboard (sway
+        # gives it the keyboard), none for other panels shown (a click on
+        # one gives it the keyboard: app.panel_pressed).
+        LayerShell.set_keyboard_mode(self, LayerShell.KeyboardMode.NONE)
+        self.keys = "none"
+        self.parked = False      # hidden but open: its workspace is away or a panel covers it
+        self.output = None       # the Gdk.Monitor it shows on (None: the compositor picks)
         # Centered, unless the tool anchors itself (kendra: top right, under
         # the bar) or the config gives a distance from the top.
         edges = {"top": LayerShell.Edge.TOP, "right": LayerShell.Edge.RIGHT,
@@ -332,7 +339,14 @@ class Panel(Gtk.ApplicationWindow):
         keys.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
         keys.connect("key-pressed", self.on_key)
         self.add_controller(keys)
-        self.connect("close-request", lambda *_: (self.hide_panel(), True)[1])
+        self.connect("close-request", lambda *_: (self.close_me(), True)[1])
+        # Who has the keyboard (ADR 17): a click on this panel takes it,
+        # losing it may mean a window was clicked.
+        press = Gtk.GestureClick(button=0)
+        press.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
+        press.connect("pressed", lambda *_: hasattr(app, "panel_pressed") and app.panel_pressed(self))
+        self.add_controller(press)
+        self.connect("notify::is-active", lambda *_: hasattr(app, "panel_active") and app.panel_active(self))
 
         # The pointer says what's clickable: a hand over buttons, switches,
         # tabs and rows that open; a text beam over text boxes. GTK leaves it
@@ -642,10 +656,128 @@ class Panel(Gtk.ApplicationWindow):
         if child is not None:
             holder.remove(child)
 
-    def show_panel(self, args):
+    # ------------------------------------------------------- keys, places
+    def close_me(self):
+        """Closes this panel only (Esc, a tool's close()): app.close_panel."""
+        if hasattr(self.app, "close_panel"):
+            self.app.close_panel(self.plugin.name)
+        else:
+            self.hide_panel()
+
+    def set_keys(self, mode):
+        """exclusive (it has the keyboard: sway hands it over and keeps it
+        there) or none (shown without it: a click on it asks Vyom for it,
+        app.panel_pressed). Not on demand: sway (1.12) hands an on-demand
+        surface the keyboard as it maps and takes it back at its next
+        layout, and on an empty workspace leaves it there."""
+        if mode != self.keys:
+            log.debug("%s: keys %s", self.plugin.name, mode)
+            self.keys = mode
+            LayerShell.set_keyboard_mode(self, KEY_MODES[mode])
+            if hasattr(self.app, "settle"):
+                self.app.settle()
+
+    def raise_up(self):
+        """Draws it above the other panels. Sway stacks layer surfaces in
+        the order it got them (or moved them to a layer), not the order
+        they show or take the keyboard; a surface moved to another layer
+        goes on top of it. So: the top layer for one frame, then back to
+        the overlay, on top. Only when another panel shows (app.apply)."""
+        if getattr(self, "warming", False):
+            return
+        log.debug("%s: raise (top layer)", self.plugin.name)
+        LayerShell.set_layer(self, LayerShell.Layer.TOP)
+        self.raising = True
+
+        def back(*_):
+            if getattr(self, "raising", False):
+                self.raising = False
+                log.debug("%s: raise (back to overlay)", self.plugin.name)
+                LayerShell.set_layer(self, LayerShell.Layer.OVERLAY)
+            return False
+        def hook():
+            clock = self.get_frame_clock() if self.get_visible() else None
+            if clock is None:
+                return back()
+            def painted(c, *_):
+                c.disconnect(hid)
+                GLib.idle_add(back)
+            hid = clock.connect("after-paint", painted)
+            self.queue_draw()
+            return False
+        if self.get_visible():
+            GLib.idle_add(hook, priority=GLib.PRIORITY_HIGH)
+        else:
+            self.connect_after_map_once(hook)
+
+    def connect_after_map_once(self, fn):
+        hid = [0]
+        def mapped(*_):
+            self.disconnect(hid[0])
+            GLib.idle_add(fn, priority=GLib.PRIORITY_HIGH)
+        hid[0] = self.connect("map", mapped)
+
+    def set_output(self, monitor):
+        """Shows on that monitor (its workspace's output; ADR 17). A panel
+        already showing moves there (gtk4-layer-shell maps it anew)."""
+        if monitor is not self.output:
+            self.output = monitor
+            LayerShell.set_monitor(self, monitor)
+
+    def set_lit(self, on, others=False):
+        """The panel with the keyboard is the lit glass (a step brighter
+        while other panels show: "lit"); another one shown is quieter glass
+        ("away"), its text as readable."""
+        for cls, want in (("away", not on), ("lit", on and others)):
+            if want:
+                self.root.add_css_class(cls)
+            else:
+                self.root.remove_css_class(cls)
+
+    def park(self):
+        """Hides it but keeps it open, exactly as it is (its workspace was
+        left, or a panel took its slot): no closed(), the tool's parked()."""
+        self.end_warm_up()
+        if not self.get_visible():
+            return
+        self.parked = True
+        self.hide()
+        try:
+            self.plugin.parked()
+        except Exception:
+            log.exception("%s: parked() failed", self.plugin.name)
+        self.release_soon()
+
+    def unpark(self, keys="exclusive"):
+        """Shows a parked panel again as it was: no opened(), the tool's
+        unparked()."""
+        if self.release_id:
+            GLib.source_remove(self.release_id)
+            self.release_id = 0
+        if not self.parked:
+            if not self.get_visible():
+                self.show_panel(self.app.last_args.get(self.plugin.name, []) if hasattr(self.app, "last_args") else [],
+                                keys=keys)
+            return
+        self.parked = False
+        self.set_keys(keys)
+        self.present()
+        try:
+            self.plugin.unparked()
+        except Exception:
+            log.exception("%s: unparked() failed", self.plugin.name)
+        live_every = self.plugin.live
+        if self.plugin.layout != "card" and isinstance(live_every, (int, float)) and live_every > 0 \
+                and self.live_id is None:
+            self.live_id = GLib.timeout_add_seconds(live_every, self._live_tick)
+
+    def show_panel(self, args, keys="exclusive"):
         if self.release_id:   # opened again before it let go of its surface
             GLib.source_remove(self.release_id)
             self.release_id = 0
+        self.parked = False
+        if not getattr(self, "warming", False):
+            self.set_keys(keys)
         self.set_full(bool(util.load_state("vyom-fullscreen", {}).get(self.plugin.name)), save=False)
         self.set_preview(bool(util.load_state("vyom-preview", {}).get(self.plugin.name, True)), save=False)
         self.plugin.opened(args)
@@ -693,9 +825,13 @@ class Panel(Gtk.ApplicationWindow):
         return True
 
     def hide_panel(self):
+        """Closes it: hidden (or parked) -> closed, the tool's closed()."""
         self.end_warm_up()
+        was_open = self.get_visible() or self.parked
+        self.parked = False
         if self.get_visible():
             self.hide()
+        if was_open:
             self.plugin.closed()
             self.release_soon()
             if getattr(self.app, "uses_dirty", False):
@@ -755,6 +891,7 @@ class Panel(Gtk.ApplicationWindow):
             LayerShell.set_margin(self, self.edges[e], -20000)
         LayerShell.set_layer(self, LayerShell.Layer.BACKGROUND)
         LayerShell.set_keyboard_mode(self, LayerShell.KeyboardMode.NONE)
+        self.keys = "none"
         self.show_panel([])
         clock = self.get_frame_clock()
         if clock is None:
@@ -774,8 +911,7 @@ class Panel(Gtk.ApplicationWindow):
             self.hide()
             self.plugin.closed()
         LayerShell.set_layer(self, LayerShell.Layer.OVERLAY)
-        LayerShell.set_keyboard_mode(self, LayerShell.KeyboardMode.EXCLUSIVE)
-        self.place()
+        self.place()   # keys stay none: each opening sets them (ADR 17)
         # The warm-up's panel is the launcher: it keeps its surface
         # (app.keeps), so every opening, the first too, reuses it.
         self.release_soon()
@@ -1024,7 +1160,7 @@ class Panel(Gtk.ApplicationWindow):
             return
         self.sel = i
         if self.plugin.activate(self.items[i][0], mods):
-            self.app.close_all()
+            self.close_me()
 
     def on_key(self, _ctl, keyval, _code, state):
         name = Gdk.keyval_name(keyval) or ""
@@ -1042,7 +1178,7 @@ class Panel(Gtk.ApplicationWindow):
         if self.plugin.layout == "card" and keyval == Gdk.KEY_space and not isinstance(self.get_focus(), Gtk.Editable):
             return True
         if keyval == Gdk.KEY_Escape:
-            self.app.close_all()
+            self.close_me()
             return True
         if keyval == Gdk.KEY_F11 and not mods:
             self.set_full(not self.full)

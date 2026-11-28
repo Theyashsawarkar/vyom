@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """vyom: the runtime for Vayu's panels (the wofi replacement).
 
-  vyom <tool> [args...]     open a tool (e.g. vyom dvara, vyom tarang); again closes it
+  vyom <tool> [args...]     open a tool (e.g. vyom dvara, vyom tarang) on this workspace; again closes it
   vyom dmenu [-p PROMPT] [--markup] < lines
                             pick one line (printed; exit 1 on Esc), like dmenu/wofi --dmenu
   vyom list                 installed tools, and why any is skipped
@@ -147,7 +147,8 @@ def dmenu(argv):
         import signal
 
         def withdrawn(*_):
-            action("close")
+            if action("hide", "dmenu") != 0:   # an older Vyom: no "hide"
+                action("close")
             sys.exit(1)
         signal.signal(signal.SIGTERM, withdrawn)
         signal.signal(signal.SIGINT, withdrawn)

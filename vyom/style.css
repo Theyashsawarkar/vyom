@@ -199,6 +199,25 @@ switch slider { border-radius: 999px; background: @crust; min-width: 16px; min-h
    the footer's tone: the tint everywhere, the footer only a line above it. */
 .vyom-panel.layout-card { background-image: linear-gradient(to bottom, alpha(white, 0.10), alpha(white, 0.05) 30%, alpha(white, 0.04)); }
 .vyom-panel.layout-card .foot { background: transparent; }
+
+/* ---- several panels open (ADR 17) ---- */
+/* The panel with the keyboard is the glass above (the lit rim and top
+   edge); another panel shown is quieter glass: its rim and top edge dim,
+   the gradient flatter. Its text and colours stay as they are, so it reads
+   as well; no ring, no glow. */
+.vyom-panel.away, .vyom-panel.layout-card.away {
+  background-image: linear-gradient(to bottom, alpha(white, 0.05), alpha(white, 0.03) 30%, alpha(white, 0.02));
+  border-color: alpha(white, 0.06);
+  box-shadow: none;
+}
+.vyom-panel.away .topbar { background: alpha(white, 0.035); }
+/* ...and while another panel shows, the one with the keyboard is a step
+   brighter glass with a clearer rim, so where your keys go reads at a glance. */
+.vyom-panel.lit {
+  background-image: linear-gradient(to bottom, alpha(white, 0.14), alpha(white, 0.07) 30%, alpha(white, 0.06));
+  border-color: alpha(white, 0.22);
+  box-shadow: inset 0 1px 0 alpha(white, 0.26);
+}
 .card-title { font-size: 18px; font-weight: 700; }
 .card-sub { color: @overlay1; font-size: 12.5px; }
 .big-number { font-size: 34px; font-weight: 700; }

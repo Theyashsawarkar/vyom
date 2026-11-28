@@ -74,6 +74,8 @@ class Plugin:
     live = 0                    # seconds: re-run search() this often while open
     debounce = 40               # ms between a keystroke and search()
     keep_query = False          # keep the typed text between openings
+    slot = ""                   # where it sits (ADR 17): "" from its anchor (none: "center"); [plugin.x] slot overrides
+    transient = False           # closes when it loses the keyboard or its workspace (vyom dmenu's picker)
     hints = []                  # Hint(keys, what) for the footer (tab_hints() per tab)
     # Tabs: [(key, label)] or [(key, label, tooltip)], a tool's main kinds. The
     # panel draws them in the top bar (a card too) and switches them with Tab /
@@ -249,7 +251,21 @@ class Plugin:
             self.panel.background(work, then)
 
     def close(self):
-        self.vyom.close_all()
+        """Closes this tool's panel (only it: other panels stay open, ADR 17)."""
+        if hasattr(self.vyom, "close_panel"):
+            self.vyom.close_panel(self.name)
+        else:
+            self.vyom.close_all()
+
+    def parked(self):
+        """The panel hid but stays open (Vyom 0.13, ADR 17): you left its
+        workspace, or another panel took its place. Everything in it is
+        kept; a tool can pause what only matters on screen (a scan)."""
+
+    def unparked(self):
+        """The parked panel shows again, exactly as it was (opened() isn't
+        called): restart what parked() paused, or a timer that stopped by
+        itself while the panel didn't show."""
 
     def tab_hints(self):
         """The footer's keys for the tab you're on: `hints` unless a tool

@@ -5,7 +5,12 @@ show one.
 bin/vyom talks to it over D-Bus (org.gtk.Actions on dev.vayu.Vyom):
   open   ["<plugin>", args...]   show a plugin (again: hide it)
   dmenu  "<request.json>"        pick one of stdin's lines (vyom dmenu)
+  hide   "<plugin>"              close that one panel
+  close                          close every panel, on every workspace
   reload / quit
+
+Panels belong to the workspace they open on and take a slot there (the
+centre, a corner): places.py decides, sway.py follows sway (ADR 17).
 """
 import importlib
 import json
@@ -25,9 +30,10 @@ gi.require_version("Graphene", "1.0")
 gi.require_version("Gtk4LayerShell", "1.0")
 from gi.repository import Gdk, Gio, GLib, Gtk  # noqa: E402
 
-from . import VERSION, config, live, osd, util  # noqa: E402
+from . import VERSION, config, live, osd, sway, util  # noqa: E402
 from . import log as vlog  # noqa: E402
 from .panel import Panel, set_keycap_colours  # noqa: E402
+from .places import Places, slot_of  # noqa: E402
 from .plugin import Hint, Plugin, Row  # noqa: E402
 
 log = logging.getLogger("vyom")
@@ -66,6 +72,7 @@ def read_meta(d):
 class DmenuPlugin(Plugin):
     """`vyom dmenu`: a list of the caller's lines; Enter prints the pick."""
     name, title, icon, color = "dmenu", "Choose", "\U000f0279", "mauve"
+    transient = True   # a script waits for it: it never stays behind (ADR 17)
     hints = [Hint("Enter", "choose"), Hint("Shift+Enter", "use what you typed")]
 
     def __init__(self, vyom, conf):
@@ -118,7 +125,7 @@ class DmenuPlugin(Plugin):
         # Nothing matches what you typed: Enter returns the typed text.
         if name in ("Return", "KP_Enter") and row is None and self.panel and self.panel.query():
             self.reply(self.panel.query() + "\n")
-            self.vyom.close_all()
+            self.close()
             return True
         return False
 
@@ -136,8 +143,12 @@ class Vyom(Gtk.Application):
         self.warm_queue = []    # kept panels still to warm up after it
         self.uses = None        # {tool: [unix times it opened]}, the last week (keeps)
         self.uses_dirty = False
+        self.places = Places()   # which workspace and slot each open panel has, who has the keys
+        self.sway = None
+        self.ws_ids = {}
+        self.settle_until = 0.0  # Vyom's own keyboard changes: focus notices until then are its own
         for name, ptype, cb in (("open", "s", self.on_open), ("dmenu", "s", self.on_dmenu),
-
+                                ("hide", "s", lambda _a, v: self.close_panel(v.get_string())),
                                 ("quick", None, lambda *_: self.open("kendra", [])),
                                 ("close", None, lambda *_: self.close_all()),
                                 ("reload", None, self.on_reload), ("quit", None, lambda *_: self.quit())):
@@ -153,6 +164,10 @@ class Vyom(Gtk.Application):
         self.conf = config.load()
         self.load_css()
         self.load_plugins()
+        # Panels follow sway's workspaces (ADR 17): its events, no polling.
+        if self.conf.get("vyom", {}).get("follow_workspaces", True) is not False:
+            self.sway = sway.Watch(self.on_workspaces)
+            self.sway.start()
 
     def load_css(self):
         paths = [os.path.join(HERE, "style.css")]
@@ -220,6 +235,8 @@ class Vyom(Gtk.Application):
             log.info("plugin %s skipped: %s", name, why)
 
     def do_shutdown(self):
+        if self.sway is not None:
+            self.sway.stop()
         live.stop()     # its helpers (pactl subscribe) go with Vyom
         Gtk.Application.do_shutdown(self)
 
@@ -345,23 +362,43 @@ class Vyom(Gtk.Application):
         argv = json.loads(param.get_string())
         self.open(argv[0], argv[1:])
 
+    def slot(self, name):
+        """The panel's slot (ADR 17): [plugin.<name>] slot, the tool's own
+        `slot`, else from its anchor (kendra: top-right; none: center)."""
+        plugin = self.plugins[name]
+        conf = self.conf.get("plugin", {}).get(name, {})
+        return slot_of(getattr(plugin, "anchor", ()) or (), conf.get("slot") or getattr(plugin, "slot", ""))
+
+    def transient(self, name):
+        own = self.conf.get("plugin", {}).get(name, {}).get("transient")
+        return own if isinstance(own, bool) else bool(getattr(self.plugins[name], "transient", False))
+
     def open(self, name, args):
+        """A tool's key (`vyom <tool>`, a bar click): opens it on the focused
+        workspace with the keyboard; the same key again closes it (only it).
+        Covered by another panel here, it comes back as it was."""
         if name not in self.plugins:
             why = self.skipped.get(name, "not installed")
             util.notify("Vyom", f"{name}: {why}", icon="dialog-warning")
             return
         for q in self.panels.values():
             q.end_warm_up()
-        p = self.panel(name)
-        if p.get_visible() and self.last_args.get(name) == args:
-            self.close_all()          # the same key again closes it
+        pl = self.places
+        same = self.last_args.get(name) == args
+        if pl.visible(name) and pl.here(name) and same:
+            self.close_panel(name)    # the same key again closes it
             return
-        self.close_all()
+        e = pl.entries.get(name)
+        if e is not None and e.covered and pl.here(name) and (same or not args) and name in self.panels:
+            t0 = time.monotonic()
+            self.apply(pl.restore(name))
+            self.log_first_paint(self.panels[name], name, t0)
+            return
         self.last_args[name] = args
         self.note_use(name)
         t0 = time.monotonic()
-        p.show_panel(args)
-        self.log_first_paint(p, name, t0)
+        self.apply(pl.open(name, self.slot(name), self.transient(name)), {name: args})
+        self.log_first_paint(self.panels[name], name, t0)
 
     def log_first_paint(self, panel, name, t0):
         """How long from the key press reaching Vyom to the panel's first
@@ -376,16 +413,158 @@ class Vyom(Gtk.Application):
         hid = clock.connect("after-paint", painted)
 
     def on_dmenu(self, _a, param):
-        self.close_all()
-        self.panel("dmenu").show_panel([param.get_string()])
+        self.last_args["dmenu"] = [param.get_string()]
+        self.apply(self.places.open("dmenu", "center", transient=True), {"dmenu": [param.get_string()]})
+
+    def close_panel(self, name):
+        """Closes one panel (Esc, its key, the tool's close()); the keyboard
+        goes back to the panel that had it before."""
+        if name in self.places.entries:
+            self.apply(self.places.close(name))
+        elif name in self.panels:
+            self.panels[name].hide_panel()
 
     def close_all(self):
+        """Every panel, on every workspace (`close` on D-Bus, a reload)."""
+        self.apply(self.places.close_all())
         for p in self.panels.values():
             p.hide_panel()
+
+    # ------------------------------------------------- applying a placement
+    def monitor(self, output):
+        """The Gdk.Monitor of a sway output name (None: the compositor picks)."""
+        if not output:
+            return None
+        mons = Gdk.Display.get_default().get_monitors()
+        for i in range(mons.get_n_items()):
+            m = mons.get_item(i)
+            if m.get_connector() == output:
+                return m
+        return None
+
+    def apply(self, ch, args=None):
+        """Does what places.py decided: hides first (so the compositor
+        hands the keyboard back before the next panel takes it), shows,
+        moves, then sets who takes keys."""
+        pl = self.places
+        for name, why in ch.hide:
+            p = self.panels.get(name)
+            if p is None:
+                continue
+            if why == "closed":
+                p.hide_panel()
+            else:
+                p.park()
+        for name, how in ch.show:
+            p = self.panel(name)
+            p.set_output(self.monitor(pl.output_of(name)))
+            if pl.focus == name and any(n != name and self.panels[n].get_visible()
+                                        for n in pl.shown() if n in self.panels):
+                p.raise_up()     # beside another panel: drawn on top of it
+            keys = "exclusive" if pl.focus == name else "none"
+            if how == "open":
+                p.show_panel((args or {}).get(name, self.last_args.get(name, [])), keys=keys)
+            else:
+                p.unpark(keys=keys)
+        for name, output in ch.move:
+            p = self.panels.get(name)
+            if p is not None:
+                p.set_output(self.monitor(output))
+        if ch:
+            self.settle()
+            log.debug("places: %s, keys: %s", ch, pl.focus)
+        self.sync_keys()
+
+    def sync_keys(self):
+        """The panel with the keyboard takes keys exclusively (sway hands the
+        keyboard to it); the others shown take none (a click asks for it:
+        panel_pressed). The focused one is lit, the others quieter glass."""
+        pl = self.places
+        shown = [n for n in pl.shown() if n in self.panels]
+        # Others give it up first: two exclusive panels would fight for it.
+        dropped = []
+        for n in shown:
+            if n != pl.focus:
+                if self.panels[n].keys == "exclusive":
+                    dropped.append(n)
+                self.panels[n].set_keys("none")
+        if dropped and pl.focus is None:
+            GLib.timeout_add(150, self._kept_keys, dropped)
+        if pl.focus in shown:
+            self.panels[pl.focus].set_keys("exclusive")
+        for n in shown:
+            self.panels[n].set_lit(n == pl.focus, others=len(shown) > 1)
+
+    def _kept_keys(self, names):
+        """Sway leaves the keyboard on a panel that lets go of it when
+        there is no window to give it to (an empty workspace): it still
+        gets every key, so it stays the panel with the keyboard (lit)."""
+        pl = self.places
+        if pl.focus is None:
+            for n in names:
+                p = self.panels.get(n)
+                if p is not None and pl.visible(n) and p.get_visible() and p.is_active():
+                    log.debug("%s: kept the keyboard (no window to take it)", n)
+                    pl.clicked(n)
+                    self.settle()
+                    self.sync_keys()
+                    break
+        return False
+
+    def settle(self, seconds=0.25):
+        self.settle_until = max(self.settle_until, time.monotonic() + seconds)
+
+    def panel_pressed(self, panel):
+        """A click or tap on a panel that shows: it takes the keyboard."""
+        name = panel.plugin.name
+        log.debug("%s: pressed", name)
+        if self.places.visible(name) and self.places.focus != name:
+            self.apply(self.places.clicked(name))
+            self.settle()
+            self.sync_keys()
+            panel.raise_up()     # clicked: on top, like a window
+
+    def panel_active(self, panel):
+        """The panel with the keyboard lost it. A click on a window
+        makes sway take the keyboard away from it and give it straight
+        back (the panel takes keys exclusively): that blip, or a loss that
+        lasts, means a window has it now: the panel lets go."""
+        name = panel.plugin.name
+        if self.places.focus != name or panel.is_active() or time.monotonic() < self.settle_until:
+            return
+        GLib.timeout_add(40, self._lost_check, name)
+
+    def _lost_check(self, name):
+        pl = self.places
+        if pl.focus != name or time.monotonic() < self.settle_until or name not in self.panels:
+            return False
+        p = self.panels[name]
+        if not p.get_visible():
+            return False
+        if any(q.is_active() for n, q in self.panels.items() if n != name and q.get_visible()):
+            return False     # another panel has it: its click is handled there
+        log.debug("%s: a window took the keyboard", name)
+        self.apply(pl.window_took_keyboard(time.monotonic()))
+        return False
+
+    def on_workspaces(self, focused, visible, ids):
+        """Sway's workspaces changed (sway.Watch)."""
+        for i, name in ids.items():
+            old = self.ws_ids.get(i)
+            if old is not None and old != name:
+                self.places.renamed(old, name)
+        self.ws_ids = ids
+        log.debug("sway: workspace %s, on screen %s", focused, visible)
+        ch = self.places.workspaces(focused, visible, time.monotonic())
+        self.apply(ch)
 
     def on_reload(self, *_):
         """Re-reads config.toml and the CSS; panels rebuild."""
         self.close_all()
+        self.places = Places()
+        if self.sway is not None and self.sway.sock is not None:
+            self.sway.asked = False
+            self.sway._ask()
         for p in self.panels.values():
             p.release_card()   # a plugin's cached card must outlive its panel
             p.destroy()

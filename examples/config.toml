@@ -25,9 +25,16 @@
 # Publish the live system state (ADR 12) for other programs, on D-Bus and
 # in $XDG_RUNTIME_DIR/vayu/state (panels use it either way); false: don't:
 # live = true
+# Panels belong to the workspace they open on (sway; ADR 17): leaving it
+# hides them as they are, coming back shows them again. false: one set of
+# panels for every workspace:
+# follow_workspaces = true
 
 # Each tool's own settings live under [plugin.<name>]; its README lists
-# them. A few examples:
+# them. Any tool also takes `slot` (where it sits among open panels:
+# "center", "top-right"...; panels in different slots open side by side,
+# one in a taken slot covers the panel there), `transient = true` (close
+# when it loses the keyboard, like vyom dmenu) and `keep`. A few examples:
 
 [plugin.dvara]
 # terminal = "kitty"

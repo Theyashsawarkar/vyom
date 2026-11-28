@@ -1,6 +1,6 @@
 # 3. Panels are layer-shell surfaces, through gtk4-layer-shell
 
-**Status:** Accepted  
+**Status:** Accepted; the keyboard: ADR 17  
 **Date:** 2026-10-19
 
 ## Context

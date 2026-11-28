@@ -6,8 +6,11 @@
   height = 520
   scale = 1.25                   # times this (capped at 90% of the screen)
   opacity = 0.72                 # panel background: 1 solid, lower shows more of the blur
+  follow_workspaces = true       # panels stay on the workspace they opened on (sway, ADR 17)
 
-  [plugin.<name>]                # each plugin's own settings (its README)
+  [plugin.<name>]                # each plugin's own settings (its README), and
+  slot = "center"                # any tool's place among open panels (ADR 17)
+  transient = false              # close when it loses the keyboard (like vyom dmenu)
 """
 import logging
 import os
