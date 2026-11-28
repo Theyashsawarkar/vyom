@@ -317,3 +317,56 @@ class Places:
             self.shown_ws.add(new)
         if old in self.outputs:
             self.outputs[new] = self.outputs.pop(old)
+
+
+GAP = 12        # px between a centre panel and an edge panel beside it
+MIN_WIDTH = 640  # px: a centre panel never gets narrower than this to make room
+
+
+def edge_rect(slot, size, screen, margins=None):
+    """Where an edge/corner panel of `size` (w, h) sits on a `screen`
+    (w, h), anchored to its slot's edges with its margins: (x, y, w, h)."""
+    (w, h), (sw, sh), m = size, screen, margins or {}
+    words = slot.split("-")
+    x = m.get("left", 0) if "left" in words else sw - w - m.get("right", 0) if "right" in words else (sw - w) / 2
+    y = m.get("top", 0) if "top" in words else sh - h - m.get("bottom", 0) if "bottom" in words else (sh - h) / 2
+    return (x, y, w, h)
+
+
+def _overlaps(a, b):
+    return a[0] < b[0] + b[2] and b[0] < a[0] + a[2] and a[1] < b[1] + b[3] and b[1] < a[1] + a[3]
+
+
+def clear_of(screen, size, edges, gap=GAP, min_width=MIN_WIDTH):
+    """Where a centre panel of `size` (w, h) goes on a `screen` (w, h) so
+    the edge panels shown beside it ([(slot, (x, y, w, h))]) never cover it:
+    None while centred clears them all, else (x, y, w): its top-left corner
+    and width, centred in the free area left between them (a gap from each),
+    narrower only when that area is (never below min_width). y is None when
+    it can stay vertically centred."""
+    sw, sh = screen
+    w, h = size
+    home = ((sw - w) / 2, (sh - h) / 2, w, h)
+    hits = [(slot, r) for slot, r in edges if _overlaps(home, r)]
+    if not hits:
+        return None
+    left, right, top, bottom = 0, sw, 0, sh
+    for slot, (x, y, ew, eh) in hits:
+        words = slot.split("-")
+        if "right" in words:
+            right = min(right, x - gap)
+        elif "left" in words:
+            left = max(left, x + ew + gap)
+        elif "top" in words:
+            top = max(top, y + eh + gap)
+        elif "bottom" in words:
+            bottom = min(bottom, y - gap)
+    # The screen's own sides keep the panel's usual gap too.
+    left, right = max(left, gap), min(right, sw - gap)
+    room = right - left
+    nw = int(max(min(w, room), min(min_width, w)))
+    x = left + max(0, (room - nw) / 2)
+    y = None
+    if top > 0 or bottom < sh:
+        y = top + max(0, (bottom - top - h) / 2)
+    return (int(round(x)), None if y is None else int(round(y)), nw)

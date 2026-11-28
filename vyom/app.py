@@ -33,7 +33,7 @@ from gi.repository import Gdk, Gio, GLib, Gtk  # noqa: E402
 from . import VERSION, config, live, osd, sway, util  # noqa: E402
 from . import log as vlog  # noqa: E402
 from .panel import Panel, set_keycap_colours  # noqa: E402
-from .places import Places, slot_of  # noqa: E402
+from .places import CENTER, Places, clear_of, edge_rect, slot_of  # noqa: E402
 from .plugin import Hint, Plugin, Row  # noqa: E402
 
 log = logging.getLogger("vyom")
@@ -455,6 +455,8 @@ class Vyom(Gtk.Application):
                 p.hide_panel()
             else:
                 p.park()
+        if ch.show or ch.hide or ch.move:
+            self.arrange()     # before showing: a panel appears where it stays
         for name, how in ch.show:
             p = self.panel(name)
             p.set_output(self.monitor(pl.output_of(name)))
@@ -494,6 +496,45 @@ class Vyom(Gtk.Application):
             self.panels[pl.focus].set_keys("exclusive")
         for n in shown:
             self.panels[n].set_lit(n == pl.focus, others=len(shown) > 1)
+        self.arrange()
+
+    def arrange(self):
+        """Panels shown side by side never cover each other (ADR 17): on
+        each output, a centre panel beside an edge or corner panel (kendra
+        under the bar) moves into the free area, narrower only if it must
+        (places.clear_of); back to its own place once the edge panel goes."""
+        pl = self.places
+        shown = [n for n in pl.shown() if n in self.panels or n in self.plugins]
+        by_out = {}
+        for n in shown:
+            by_out.setdefault(pl.output_of(n), []).append(n)
+        for out, names in by_out.items():
+            mon = self.monitor(out)
+            if mon is None:
+                mons = Gdk.Display.get_default().get_monitors()
+                mon = mons.get_item(0) if mons.get_n_items() else None
+            if mon is None:
+                continue
+            g = mon.get_geometry()
+            screen = (g.width, g.height)
+            edges = []
+            for n in names:
+                slot = self.slot(n)
+                p = self.panel(n)
+                if slot != CENTER and not p.full:
+                    edges.append((slot, edge_rect(slot, p.natural_size(), screen, p.home_margins)))
+            for n in names:
+                p = self.panel(n)
+                if self.slot(n) != CENTER or p.anchored or p.full:
+                    continue
+                w = p.base_width
+                h = p.natural_size()[1]
+                p.set_clear(clear_of(screen, (w, h), edges))
+        # a parked or hidden centre panel goes back to its own place, so it
+        # never reappears where it was moved for a panel that's gone
+        for n, p in self.panels.items():
+            if n not in shown and p.clear is not None and not p.get_visible():
+                p.set_clear(None)
 
     def _kept_keys(self, names):
         """Sway leaves the keyboard on a panel that lets go of it when

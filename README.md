@@ -205,7 +205,9 @@ Panels behave like windows that know their place (ADR 17):
   launcher, calculator, clipboard, Wi-Fi…) or the corner or edge it's anchored
   to (quick settings: top right, under the bar). Panels in different slots
   stay open side by side: pick an app in the launcher, click the quick
-  settings on the bar, and both are open. Opening a panel whose slot is taken
+  settings on the bar, and both are open. They never cover each other: the
+  centre panel moves over to clear the corner one (narrower only if the
+  screen leaves no room) and moves back when it closes. Opening a panel whose slot is taken
   covers the one there, which keeps its state: its key brings it back as it was.
 - **The keyboard is like a window's.** The panel opened last has it; click
   another panel and that one does, and comes to the top. It's the lit glass;
@@ -418,10 +420,10 @@ outside Vyom vendor the keys module with `scripts/vendor-keys.sh <file>`.
 - **A panel stays when I switch workspaces / opens on the wrong monitor.**
   Vyom follows sway through `$SWAYSOCK`; the daemon logs `no sway socket` or
   `sway IPC closed` when it can't. `[vyom] follow_workspaces = false` turns it off.
-- **Two panels overlap.** Panels in different slots are drawn where their
-  tools put them; on a small screen the centre panel and quick settings can
-  overlap. The one with the keyboard is drawn on top (click the other to
-  bring it up); give one the other's `slot` to have them replace each other.
+- **Two panels overlap.** They don't: a centre panel moves (and on a small
+  screen narrows, down to 640 px) to clear an edge panel beside it. Only on a
+  very small screen can they overlap; the one with the keyboard is drawn on
+  top then (click the other to bring it up).
 
 ## Contributing
 

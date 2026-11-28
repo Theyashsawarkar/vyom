@@ -7,7 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from vyom import sway  # noqa: E402
-from vyom.places import CENTER, Places, slot_of  # noqa: E402
+from vyom.places import CENTER, Places, clear_of, edge_rect, slot_of  # noqa: E402
 
 TR = "top-right"
 
@@ -306,6 +306,62 @@ class Transient(unittest.TestCase):
         ch = go(p, "2")
         self.assertEqual(ch.hide, [("dmenu", "closed")])
         self.assertNotIn("dmenu", p.entries)
+
+
+class ClearOf(unittest.TestCase):
+    """A centre panel beside an edge panel (the user's 1920x1080: dvara
+    1125x650 centred, kendra ~440x580 at the top right)."""
+    S = (1920, 1080)
+    KENDRA = edge_rect("top-right", (438, 580), (1920, 1080), {"top": 6, "right": 8})
+
+    def test_edge_rect(self):
+        self.assertEqual(self.KENDRA, (1474, 6, 438, 580))
+        self.assertEqual(edge_rect("bottom-left", (100, 50), (1000, 800)), (0, 750, 100, 50))
+        self.assertEqual(edge_rect("top", (100, 50), (1000, 800), {"top": 4}), (450, 4, 100, 50))
+
+    def test_no_overlap_stays_centred(self):
+        small = edge_rect("top-right", (200, 100), self.S)
+        self.assertIsNone(clear_of(self.S, (1125, 650), [("top-right", small)]))
+        self.assertIsNone(clear_of(self.S, (1125, 650), []))
+
+    def test_moves_left_of_kendra(self):
+        x, y, w = clear_of(self.S, (1125, 650), [("top-right", self.KENDRA)])
+        self.assertEqual(w, 1125)                       # it fits: same width
+        self.assertIsNone(y)                            # still centred vertically
+        self.assertLessEqual(x + w, self.KENDRA[0] - 12)  # a gap from kendra
+        self.assertGreaterEqual(x, 0)
+        self.assertEqual(x, round(12 + (1474 - 12 - 12 - 1125) / 2))   # centred in the free area
+
+    def test_shrinks_when_narrow(self):
+        s = (1280, 800)
+        k = edge_rect("top-right", (438, 580), s, {"top": 6, "right": 8})
+        x, y, w = clear_of(s, (1125, 650), [("top-right", k)])
+        self.assertLess(w, 1125)
+        self.assertLessEqual(x + w, k[0] - 12)
+        self.assertGreaterEqual(x, 12)                  # its usual gap from the screen's edge
+        self.assertGreaterEqual(w, 640)
+
+    def test_never_below_minimum(self):
+        s = (1000, 800)
+        k = edge_rect("top-right", (438, 580), s)
+        x, y, w = clear_of(s, (900, 600), [("top-right", k)])
+        self.assertEqual(w, 640)                         # overlaps rather than unusable
+
+    def test_left_edge_and_both(self):
+        left = edge_rect("left", (500, 900), self.S)
+        x, y, w = clear_of(self.S, (1125, 650), [("left", left)])
+        self.assertGreaterEqual(x, 500 + 12)
+        both = [("left", left), ("top-right", self.KENDRA)]
+        x, y, w = clear_of(self.S, (1125, 650), both)
+        self.assertGreaterEqual(x, 512)
+        self.assertLessEqual(x + w, self.KENDRA[0] - 12)
+        self.assertEqual(w, 1474 - 12 - 512)            # narrower: the room between them
+
+    def test_top_edge_moves_down(self):
+        top = edge_rect("top", (1600, 300), self.S, {"top": 6})
+        x, y, w = clear_of(self.S, (1125, 650), [("top", top)])
+        self.assertGreaterEqual(y, 306 + 12)
+        self.assertEqual(w, 1125)
 
 
 class SwayIpc(unittest.TestCase):

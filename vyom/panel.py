@@ -257,6 +257,7 @@ class Panel(Gtk.ApplicationWindow):
         self.anchored = bool(anchor)
         self.edges, self.home_anchor, self.home_margins = edges, anchor, margins
         self.full = False
+        self.clear = None        # (x, y|None, width): moved and maybe narrowed to clear an edge panel (ADR 17)
         self.place()
 
         self.items = []        # selectable (Row, widget) in order
@@ -286,6 +287,7 @@ class Panel(Gtk.ApplicationWindow):
         w, h, pw = self.sizes()
         root.set_size_request(w, -1)
         self.root = root
+        self.base_width = w
 
         if plugin.layout == "card":
             root.add_css_class("layout-card")
@@ -392,10 +394,41 @@ class Panel(Gtk.ApplicationWindow):
                 LayerShell.set_anchor(self, e, True)
                 LayerShell.set_margin(self, e, FULL_GAP)
             return
+        if self.clear is not None:
+            x, y, _w = self.clear
+            LayerShell.set_anchor(self, self.edges["left"], True)
+            LayerShell.set_margin(self, self.edges["left"], int(x))
+            if y is not None:
+                LayerShell.set_anchor(self, self.edges["top"], True)
+                LayerShell.set_margin(self, self.edges["top"], int(y))
+            return
         for e in self.home_anchor:
             LayerShell.set_anchor(self, self.edges[e], True)
         for e, px in self.home_margins.items():
             LayerShell.set_margin(self, self.edges[e], int(px))
+
+    def set_clear(self, clear):
+        """Moves it (and narrows it, if it must) so an edge panel beside it
+        never covers it: (x, y|None, width) from places.clear_of, None back
+        to its own place and size. Instant: one commit, no animation."""
+        if clear == self.clear:
+            return
+        old_w = self.clear[2] if self.clear else self.base_width
+        self.clear = clear
+        new_w = clear[2] if clear else self.base_width
+        if new_w != old_w:
+            self.root.set_size_request(new_w, -1)
+            self.set_default_size(1, 1)      # let the window shrink to it
+        self.place()
+
+    def natural_size(self):
+        """(w, h) on screen, or what it will be before it first shows."""
+        w, h = self.get_width(), self.get_height()
+        if w > 1 and h > 1 and self.get_realized():
+            return w, h
+        child = self.get_child()
+        w = child.measure(Gtk.Orientation.HORIZONTAL, -1)[1]
+        return w, child.measure(Gtk.Orientation.VERTICAL, w)[1]
 
     def set_full(self, on, save=True):
         if on == self.full:
